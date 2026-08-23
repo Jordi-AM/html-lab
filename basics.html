@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introducció a Unity - Conceptes Fonamentals</title>
+
+<style>
+:root{
+    --bg:#0f172a;
+    --panel:#1e293b;
+    --panel2:#334155;
+    --accent:#22d3ee;
+    --accent2:#a78bfa;
+    --success:#22c55e;
+    --danger:#ef4444;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    font-family:Segoe UI,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.6;
+}
+
+header{
+    text-align:center;
+    padding:50px 20px;
+    background:linear-gradient(135deg,#0f172a,#1e293b);
+}
+
+header h1{
+    font-size:3rem;
+    color:var(--accent);
+}
+
+header p{
+    max-width:900px;
+    margin:auto;
+    margin-top:15px;
+    color:var(--muted);
+}
+
+section{
+    max-width:1200px;
+    margin:auto;
+    padding:40px 20px;
+}
+
+.card{
+    background:var(--panel);
+    border-radius:16px;
+    padding:25px;
+    margin-bottom:25px;
+    border:1px solid rgba(255,255,255,.08);
+}
+
+h2{
+    color:var(--accent);
+    margin-bottom:15px;
+}
+
+h3{
+    color:#7dd3fc;
+    margin-bottom:10px;
+}
+
+p{
+    margin-bottom:12px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:20px;
+}
+
+.concept{
+    background:var(--panel2);
+    border-radius:12px;
+    padding:20px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.concept:hover{
+    transform:translateY(-5px);
+    box-shadow:0 0 20px rgba(34,211,238,.25);
+}
+
+.extra{
+    display:none;
+    margin-top:10px;
+    color:#cbd5e1;
+}
+
+button{
+    background:var(--accent);
+    border:none;
+    color:black;
+    padding:10px 20px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+.builder{
+    display:flex;
+    flex-wrap:wrap;
+    gap:15px;
+}
+
+.piece{
+    background:var(--accent2);
+    padding:12px;
+    border-radius:10px;
+    cursor:pointer;
+    color:white;
+}
+
+.result{
+    margin-top:20px;
+    padding:15px;
+    border-radius:10px;
+    background:#111827;
+}
+
+.quiz{
+    margin-top:15px;
+}
+
+.answer{
+    margin-top:10px;
+    font-weight:bold;
+}
+
+.correct{
+    color:var(--success);
+}
+
+.incorrect{
+    color:var(--danger);
+}
+
+.footer{
+    text-align:center;
+    color:var(--muted);
+    padding:30px;
+}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Primers passos amb Unity</h1>
+
+<p>
+Abans de començar a programar, cal entendre com està organitzat un projecte dins de Unity.
+Si entens què és una Escena, un GameObject, un Component, un Asset, un Script o un Prefab,
+la resta de conceptes encaixaran molt més fàcilment.
+</p>
+
+</header>
+
+<section>
+
+<div class="card">
+
+<h2>🎬 Unity com un plató de cinema</h2>
+
+<p><strong>Escena:</strong> És el plató on es desenvolupa una seqüència del joc.</p>
+
+<p><strong>GameObjects:</strong> Són els actors, decorats, càmeres, llums i objectes que existeixen dins del plató.</p>
+
+<p><strong>Components:</strong> Són les característiques que donen funcionalitat als objectes.</p>
+
+<p><strong>Scripts:</strong> Són les instruccions que determinen el comportament dels objectes.</p>
+
+<p><strong>Assets:</strong> Són tots els recursos del projecte: imatges, sons, scripts, animacions, tipografies, etc.</p>
+
+<p><strong>Prefabs:</strong> Són plantilles reutilitzables que permeten crear múltiples còpies d'un objecte sense tornar-lo a configurar.</p>
+
+</div>
+
+<div class="card">
+
+<h2>🧠 Mapa conceptual interactiu</h2>
+
+<div class="grid">
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>🌍 Escena (Scene)</h3>
+<p>L'espai on es desenvolupa una part del videojoc.</p>
+
+<div class="extra">
+Una escena conté GameObjects organitzats en una jerarquia.
+És habitual tenir una escena per al menú principal, una altra per als nivells
+i una altra per als crèdits o la pantalla final.
+</div>
+</div>
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>🎲 GameObject</h3>
+<p>La unitat bàsica de Unity.</p>
+
+<div class="extra">
+Qualsevol element que veiem a la jerarquia d'una escena és un GameObject.
+Pot representar un personatge, una càmera, un enemic, una moneda, un arbre o una llum.
+Per si sol té molt poques funcionalitats; són els components els que li proporcionen
+les característiques i comportaments necessaris.
+</div>
+</div>
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>🧩 Components</h3>
+<p>Les peces que afegeixen funcionalitats.</p>
+
+<div class="extra">
+Un Sprite Renderer permet mostrar una imatge.
+Un Rigidbody2D afegeix físiques.
+Un Collider2D permet detectar col·lisions.
+Els GameObjects obtenen les seves funcionalitats a través dels components que tenen afegits.
+</div>
+</div>
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>📦 Prefabs</h3>
+<p>Plantilles reutilitzables.</p>
+
+<div class="extra">
+Si configures un enemic completament i el converteixes en Prefab,
+podràs crear-ne desenes o centenars de còpies.
+Quan modifiques el Prefab, les instàncies relacionades es poden actualitzar automàticament.
+</div>
+</div>
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>🎨 Assets (Recursos)</h3>
+<p>Tot el contingut del projecte.</p>
+
+<div class="extra">
+Sprites, textures, música, efectes de so, animacions, models, vídeos,
+materials, tipografies i scripts.
+Qualsevol fitxer que forma part del projecte és considerat un Asset.
+</div>
+</div>
+
+<div class="concept" onclick="toggleInfo(this)">
+<h3>💻 Scripts</h3>
+<p>Comportaments programats.</p>
+
+<div class="extra">
+Normalment estan escrits en C#.
+Defineixen regles, moviments, interfícies, sistemes de joc o intel·ligència artificial.
+
+És important entendre que un Script és inicialment un Asset dins de la carpeta Project.
+Quan s'afegeix a un GameObject, també es converteix en un Component.
+</div>
+</div>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>🔧 Simulador: construeix un GameObject</h2>
+
+<p>
+Fes clic sobre els components per afegir-los al personatge.
+Observa com un GameObject adquireix funcionalitats a mesura que hi afegim components.
+</p>
+
+<div class="builder">
+<div class="piece" onclick="addComponent('Sprite Renderer')">Sprite Renderer</div>
+<div class="piece" onclick="addComponent('Rigidbody2D')">Rigidbody2D</div>
+<div class="piece" onclick="addComponent('Collider2D')">Collider2D</div>
+<div class="piece" onclick="addComponent('PlayerController.cs')">Script</div>
+</div>
+
+<div class="result">
+<h3>GameObject: Player</h3>
+
+<div id="components">
+Encara no té components afegits.
+</div>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>📁 Classifica els elements</h2>
+
+<p>Quins dels elements següents són Assets?</p>
+
+<div>
+
+<label><input type="checkbox" value="1"> Sprite del personatge</label><br>
+
+<label><input type="checkbox" value="1"> Música de fons</label><br>
+
+<label><input type="checkbox" value="0"> Escena oberta</label><br>
+
+<label><input type="checkbox" value="1"> Script PlayerController.cs</label><br>
+
+<label><input type="checkbox" value="0"> GameObject Main Camera</label><br>
+
+</div>
+
+<br>
+
+<button onclick="checkAssets()">Corregir</button>
+
+<div id="assetResult"></div>
+
+</div>
+
+<div class="card">
+
+<h2>🎯 Quiz final</h2>
+
+<div class="quiz">
+
+<p><strong>1.</strong> Quin concepte representa una plantilla reutilitzable?</p>
+
+<select id="q1">
+<option></option>
+<option>Escena</option>
+<option>Prefab</option>
+<option>Component</option>
+</select>
+
+<br><br>
+
+<p><strong>2.</strong> Què necessita un GameObject per obtenir noves funcionalitats?</p>
+
+<select id="q2">
+<option></option>
+<option>Assets</option>
+<option>Components</option>
+<option>Escenes</option>
+</select>
+
+<br><br>
+
+<p><strong>3.</strong> Què són els Scripts dins de Unity?</p>
+
+<select id="q3">
+<option></option>
+<option>Fitxers de comportament</option>
+<option>Tipus d'escena</option>
+<option>Recursos gràfics</option>
+</select>
+
+<br><br>
+
+<button onclick="evaluateQuiz()">Avaluar</button>
+
+<div id="quizResult" class="answer"></div>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>🚀 Resum visual</h2>
+
+<p>
+
+Els recursos (Assets) s'importen al projecte.<br><br>
+
+Amb aquests recursos construïm GameObjects.<br><br>
+
+Els GameObjects existeixen dins d'una escena.<br><br>
+
+Els components afegeixen funcionalitats als GameObjects.<br><br>
+
+Els scripts són components especials escrits en C# que defineixen comportaments.<br><br>
+
+Quan volem reutilitzar un GameObject configurat, el podem convertir en un Prefab.
+
+</p>
+
+</div>
+
+</section>
+
+<div class="footer">
+Canvas introductori d'Unity · CFGS d'Animació 2D, 3D i Videojocs
+</div>
+
+<script>
+
+function toggleInfo(element){
+    const info = element.querySelector(".extra");
+
+    info.style.display =
+        info.style.display === "block"
+        ? "none"
+        : "block";
+}
+
+let comps=[];
+
+function addComponent(name){
+
+    if(!comps.includes(name)){
+        comps.push(name);
+    }
+
+    document.getElementById("components").innerHTML =
+        comps.map(c => `✅ ${c}`).join("<br>");
+}
+
+function checkAssets(){
+
+    const checks=document.querySelectorAll('input[type="checkbox"]');
+
+    let correct=true;
+
+    checks.forEach(c=>{
+
+        const shouldBe = c.value==="1";
+
+        if(c.checked!==shouldBe){
+            correct=false;
+        }
+    });
+
+    document.getElementById("assetResult").innerHTML =
+        correct
+        ? "<span class='correct'>✔ Correcte! Has identificat tots els Assets.</span>"
+        : "<span class='incorrect'>✘ Revisa la teva selecció. Recorda que un Asset és un fitxer o recurs del projecte.</span>";
+}
+
+function evaluateQuiz(){
+
+    let score=0;
+
+    if(document.getElementById("q1").value==="Prefab") score++;
+
+    if(document.getElementById("q2").value==="Components") score++;
+
+    if(document.getElementById("q3").value==="Fitxers de comportament") score++;
+
+    let text="Has obtingut "+score+"/3.";
+
+    if(score===3)
+        text+=" Excel·lent!";
+    else if(score===2)
+        text+=" Molt bé!";
+    else
+        text+=" Convé repassar alguns conceptes.";
+
+    document.getElementById("quizResult").innerHTML=text;
+}
+
+</script>
+
+</body>
+</html>
