@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity 2D · Sessió 1 — Motors de jocs. Unity 3D: BASICS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* STREAMING_CHUNK:Definint la paleta i les variables base... */
+:root{
+  --bg:#0a0a1a;
+  --panel:#12122b;
+  --panel-2:#1b1b3a;
+  --line:rgba(255,255,255,0.09);
+  --text:#F1F5FF;
+  --text-dim:#B8C0D9;
+  --text-faint:#7580A0;
+  --cyan:#00f3ff;
+  --cyan-dim:rgba(0,243,255,0.14);
+  --violet:#b535ff;
+  --violet-dim:rgba(181,53,255,0.14);
+  --green:#00ff88;
+  --red:#f43f5e;
+  --amber:#f59e0b;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(0,243,255,0.09) 0%, transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(181,53,255,0.09) 0%, transparent 42%);
+  background-attachment:fixed;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+code,.mono,pre{font-family:'JetBrains Mono',monospace;}
+a{color:var(--cyan);}
+
+/* STREAMING_CHUNK:Maquetant la capçalera i l'indicador de progrés... */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:linear-gradient(180deg,#0d0d22 0%,#0a0a1a 100%);
+  border-bottom:1px solid var(--line);
+  padding:14px 24px 12px;
+  backdrop-filter:blur(8px);
+}
+.session-title-row{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px;}
+.session-title{font-size:20px; font-weight:600; letter-spacing:0.2px;}
+.session-title span{color:var(--text-faint); font-weight:400; font-size:13px; margin-left:8px;}
+.teacher-btn{
+  background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line);
+  padding:8px 14px; border-radius:8px; font-size:13px; cursor:pointer;
+  display:flex; align-items:center; gap:6px; transition:all .15s; flex-shrink:0;
+  font-family:'Inter',sans-serif;
+}
+.teacher-btn:hover{border-color:var(--violet); color:var(--violet);}
+
+.nav-row{display:flex; align-items:center; gap:16px;}
+.nav-btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+  width:36px; height:36px; border-radius:8px; cursor:pointer; font-size:18px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s;
+}
+.nav-btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.nav-btn:disabled{opacity:.3; cursor:default;}
+.nav-mid{flex:1; min-width:0;}
+.nav-label{font-size:12px; color:var(--text-faint); margin-bottom:6px; display:flex; justify-content:space-between; gap:12px;}
+.nav-label b{color:var(--text-dim); font-weight:600; white-space:nowrap;}
+.nav-label span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.gauge{height:10px; border-radius:6px; background:var(--panel-2); position:relative; overflow:hidden; border:1px solid var(--line);}
+.gauge-fill{
+  height:100%; border-radius:6px;
+  background:linear-gradient(90deg,#00b4d8,var(--cyan) 55%,var(--violet));
+  box-shadow:0 0 12px rgba(0,243,255,.5);
+  transition:width .35s ease; position:relative;
+}
+.gauge-ticks{position:absolute; inset:0; display:flex;}
+.gauge-ticks div{flex:1; border-right:1px solid rgba(10,10,26,.6);}
+.gauge-ticks div:last-child{border-right:none;}
+
+/* STREAMING_CHUNK:Definint el layout de barra lateral i contingut ample... */
+.layout{display:flex; max-width:1340px; margin:0 auto;}
+.sidebar{width:280px; flex-shrink:0; padding:20px 12px; border-right:1px solid var(--line); min-height:calc(100vh - 96px);}
+.sidebar-label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); padding:0 12px; margin:18px 0 8px;}
+.sidebar-label:first-child{margin-top:0;}
+.mod-item{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:8px;
+  cursor:pointer; margin-bottom:2px; color:var(--text-dim); font-size:13.5px; line-height:1.35; transition:all .12s;
+}
+.mod-item:hover{background:var(--panel);}
+.mod-item.active{background:var(--cyan-dim); color:var(--text); box-shadow:inset 3px 0 0 var(--cyan);}
+.mod-item .tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); background:var(--panel-2); padding:2px 6px; border-radius:4px; flex-shrink:0;}
+.mod-item.active .tag{color:var(--cyan); background:rgba(0,243,255,.12);}
+.mod-item.special{border-top:1px solid var(--line); margin-top:10px; padding-top:14px; border-radius:0;}
+.mod-item.special .tag{color:var(--violet); background:var(--violet-dim);}
+.mod-item.special.quiz .tag{color:var(--green); background:rgba(0,255,136,.12);}
+
+.content{flex:1; padding:30px 44px; min-width:0;}
+.eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-faint); margin-bottom:6px;}
+.content h2{font-size:26px; margin:0 0 18px;}
+.content h3{font-size:16px; margin:24px 0 10px; color:var(--text);}
+.content p{line-height:1.68; color:var(--text-dim); margin:0 0 14px;}
+.content ul,.content ol{line-height:1.68; color:var(--text-dim); padding-left:22px; margin:0 0 14px;}
+.content li{margin-bottom:6px;}
+.content strong{color:var(--text);}
+pre{
+  background:#05050f; border:1px solid rgba(0,243,255,.16); border-radius:var(--radius);
+  padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6; color:var(--green); margin:0 0 14px;
+}
+pre .cm{color:var(--text-faint);}
+pre .bad{color:var(--red);}
+.mono{font-size:.94em;}
+p .mono,li .mono,td .mono{background:var(--panel-2); padding:1px 5px; border-radius:4px; color:var(--cyan);}
+
+.panel-box{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 14px;}
+.panel-box.warn{border-left:3px solid var(--red);}
+.panel-box.tip{border-left:3px solid var(--cyan);}
+.panel-box.deepen{border-left:3px solid var(--violet);}
+.panel-box p{margin:0;}
+
+table.data{width:100%; border-collapse:collapse; font-size:13px; margin:0 0 14px;}
+table.data th{text-align:left; padding:8px 10px; background:var(--panel-2); color:var(--text-faint); font-size:11px; text-transform:uppercase; letter-spacing:.6px; font-weight:600;}
+table.data td{padding:8px 10px; border-top:1px solid var(--line); color:var(--text-dim); vertical-align:top;}
+
+.bottom-nav{display:flex; justify-content:space-between; gap:12px; margin-top:28px; padding-top:18px; border-top:1px solid var(--line);}
+.btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Inter',sans-serif;
+  padding:9px 16px; border-radius:8px; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.btn:disabled{opacity:.3; cursor:default;}
+.btn.primary{background:linear-gradient(135deg,rgba(0,243,255,.2),rgba(181,53,255,.25)); border-color:var(--cyan); color:var(--cyan);}
+.btn.primary:hover:not(:disabled){box-shadow:0 0 14px rgba(0,243,255,.35);}
+.btn.danger{border-color:var(--red); color:var(--red);}
+.btn.small{padding:6px 11px; font-size:12px;}
+
+/* STREAMING_CHUNK:Donant estil a la checklist del repte pràctic... */
+.check-item{display:flex; align-items:flex-start; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 13px; margin-bottom:7px; cursor:pointer; transition:all .12s;}
+.check-item:hover{border-color:rgba(0,243,255,.3);}
+.check-item input{margin-top:3px; accent-color:var(--cyan); flex-shrink:0;}
+.check-item span{font-size:13.5px; color:var(--text-dim); line-height:1.5;}
+.check-item.done span{color:var(--text-faint); text-decoration:line-through;}
+.progress-row{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+.progress-bar{flex:1; height:8px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+.progress-bar div{height:100%; width:0; background:linear-gradient(90deg,var(--cyan),var(--violet)); transition:width .3s ease;}
+.progress-pct{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--cyan); min-width:44px; text-align:right;}
+
+/* STREAMING_CHUNK:Preparant les finestres modals i el flux del test... */
+.overlay{position:fixed; inset:0; background:rgba(5,5,15,.82); backdrop-filter:blur(6px); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px;}
+.overlay.hidden{display:none;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; width:520px; max-width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.modal h3{margin:0 0 4px; font-size:19px;}
+.modal .sub{font-size:13px; color:var(--text-faint); margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; color:var(--text-faint); margin-bottom:5px;}
+.field input{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 12px; color:var(--text); font-size:14px; font-family:'Inter',sans-serif;}
+.field input:focus{outline:none; border-color:var(--cyan);}
+.error-msg{display:none; color:var(--red); font-size:12.5px; margin-bottom:12px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+.quiz-progress{font-size:12px; color:var(--text-faint); margin-bottom:14px; letter-spacing:.4px;}
+.q-block{margin-bottom:6px;}
+.q-text{font-size:15.5px; font-weight:500; line-height:1.5; margin-bottom:16px;}
+.opt{display:flex; align-items:flex-start; gap:11px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:11px 14px; margin-bottom:8px; cursor:pointer; font-size:13.5px; color:var(--text-dim); transition:all .12s;}
+.opt:hover{border-color:rgba(0,243,255,.35);}
+.opt.selected{border-color:var(--cyan); background:var(--cyan-dim); color:var(--text);}
+.opt .letter{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-faint); background:var(--bg); border-radius:4px; padding:1px 7px; flex-shrink:0;}
+.opt.selected .letter{color:var(--cyan);}
+.result-card{text-align:center;}
+.result-score{font-family:'Space Grotesk',sans-serif; font-size:52px; font-weight:700; color:var(--cyan); text-shadow:0 0 22px rgba(0,243,255,.4); line-height:1.1; margin:6px 0;}
+.result-score.fail{color:var(--red); text-shadow:0 0 22px rgba(244,63,94,.35);}
+
+.stat-row{display:flex; gap:10px; margin-bottom:16px;}
+.stat-card{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; text-align:center;}
+.stat-card .eyebrow{margin-bottom:3px;}
+.stat-card b{font-family:'Space Grotesk',sans-serif; font-size:19px;}
+.badge{font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; border-radius:20px; display:inline-block;}
+.badge.ok{color:var(--green); background:rgba(0,255,136,.12); border:1px solid rgba(0,255,136,.3);}
+.badge.ko{color:var(--red); background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.3);}
+.toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;}
+table.tp{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.tp th{position:sticky; top:0; background:var(--panel-2); text-align:left; padding:7px 9px; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-faint);}
+table.tp td{padding:7px 9px; border-top:1px solid var(--line); color:var(--text-dim);}
+
+::-webkit-scrollbar{width:7px; height:7px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,243,255,.22); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,243,255,.5);}
+
+@media (max-width:900px){
+  .sidebar{display:none;}
+  .content{padding:22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- STREAMING_CHUNK:Construint la capçalera amb el cicle, el mòdul i el gauge... -->
+<div class="topbar">
+  <div class="session-title-row">
+    <div class="session-title" id="sessionTitleEl"></div>
+    <button class="teacher-btn" onclick="openTeacherGate()">🔒 Panell professor</button>
+  </div>
+  <div class="nav-row">
+    <button class="nav-btn" id="prevBtn" onclick="goTo(currentIndex-1)">‹</button>
+    <div class="nav-mid">
+      <div class="nav-label"><b id="navLabel"></b><span id="navModTitle"></span></div>
+      <div class="gauge"><div class="gauge-fill" id="gaugeFill"><div class="gauge-ticks" id="gaugeTicks"></div></div></div>
+    </div>
+    <button class="nav-btn" id="nextBtn" onclick="goTo(currentIndex+1)">›</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- STREAMING_CHUNK:Preparant les portes d'accés al test... -->
+<div class="overlay hidden" id="quizGate">
+  <div class="modal">
+    <div id="quizGateBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="quizModal">
+  <div class="modal" style="width:640px;">
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="teacherGate">
+  <div class="modal">
+    <h3>🔒 Accés professor</h3>
+    <div class="sub">Introdueix la contrasenya del panell.</div>
+    <div class="field"><label>Contrasenya</label><input id="teacherPwd" type="password" onkeydown="if(event.key==='Enter')tryUnlockTeacher()"></div>
+    <div class="error-msg" id="teacherError">Contrasenya incorrecta.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeOverlay('teacherGate')">Cancel·la</button>
+      <button class="btn primary" onclick="tryUnlockTeacher()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STREAMING_CHUNK:Muntant el panell del professor... -->
+<div class="overlay hidden" id="teacherPanel">
+  <div class="modal" style="width:840px;">
+    <h3>📊 Panell del professor</h3>
+    <div class="sub" id="tpSession"></div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Test per als alumnes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpOberturaStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpOberturaBtn" onclick="toggleObertura()">···</button>
+    </div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Revisió de respostes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpRevisioStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpRevisioBtn" onclick="toggleRevisio()">···</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="eyebrow" id="tpTotalLabel">Lliuraments</div><b style="color:var(--cyan)" id="tpTotal">0</b></div>
+      <div class="stat-card"><div class="eyebrow">Nota mitjana</div><b style="color:var(--violet)" id="tpAvg">0.0</b></div>
+      <div class="stat-card"><div class="eyebrow">% aprovats</div><b style="color:var(--green)" id="tpPass">0%</b></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn small" id="tpFilterBtn" onclick="toggleFilter()">Només aquest test</button>
+      <button class="btn small" id="tpViewBtn" onclick="toggleViewMode()">Mitjanes per alumne</button>
+      <label style="font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <input type="checkbox" id="tpAuto" checked onchange="toggleAutoRefresh()" style="accent-color:var(--cyan)"> Auto-refresc 10s
+      </label>
+      <button class="btn small" onclick="loadTeacherData(true)">🔄 Actualitzar</button>
+      <button class="btn small" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn small danger" onclick="resetLocalAttempt()" title="Permet tornar a fer el test en AQUEST ordinador">↺ Reiniciar intent local</button>
+    </div>
+
+    <div id="tpTableWrap" style="max-height:44vh; overflow:auto; border:1px solid var(--line); border-radius:10px;"></div>
+    <div style="font-size:11px; color:var(--text-faint); margin-top:8px;" id="tpStatus"></div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeOverlay('teacherPanel'); stopAutoRefresh();">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   STREAMING_CHUNK:Definint la configuració de la sessió...
+   Per generar una sessió nova només cal reomplir SESSION, MODULES,
+   CHALLENGE i TEST. El MOTOR de més avall no s'ha de tocar.
+   ========================================================================= */
+const SESSION = {
+  name: "Motors de jocs. Unity 3D: BASICS",
+  subtitle: "CFGS Animació 2D/3D i Videojocs · Mòdul 1091 · Sessió 1",
+  sheetUrl: "https://script.google.com/macros/s/AKfycbwtStGESXzyl0Z4FO4iBJc7fxt-ec6pQOsvGZilHmkmrSxcUAvvfnuvPOPt3UstZ4Z2/exec",
+  teacherPwd: "933.100.300",
+  passMark: 5.0,
+  autoRefreshMs: 10000
+};
+
+const MODULES = [
+  {
+    title: "Els motors de videojocs",
+    body: `
+      <p>Un <strong>motor de videojocs</strong> és un conjunt d'eines i llibreries que resolen els problemes comuns a (gairebé) tots els jocs, perquè l'equip de desenvolupament es pugui centrar en el joc en si i no en "reinventar la roda" cada vegada.</p>
+      <div class="panel-box tip">
+        <div class="eyebrow">Analogia</div>
+        <p>És com un taller de fusteria ja muntat amb serra, trepant i banc de treball: no cal que et fabriquis les eines abans de fer la cadira.</p>
+      </div>
+      <h3>Què resol un motor</h3>
+      <ul>
+        <li>Renderitzat (2D i 3D)</li>
+        <li>Física (col·lisions, gravetat, forces)</li>
+        <li>Gestió d'inputs (teclat, ratolí, comandaments)</li>
+        <li>So</li>
+        <li>Gestió d'escenes i assets</li>
+        <li>Exportació a múltiples plataformes (PC, mòbil, consoles, web)</li>
+      </ul>
+      <h3>Motors habituals al sector</h3>
+      <table class="data">
+        <thead><tr><th>Motor</th><th>Punt fort</th><th>Llenguatge</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Unity</strong></td><td>Versàtil, gran comunitat, molt usat en 2D/mòbil/indie</td><td>C#</td></tr>
+          <tr><td>Unreal Engine</td><td>Gràfics d'alta gamma, AAA</td><td>C++ / Blueprints</td></tr>
+          <tr><td>Godot</td><td>Lleuger, open source, en creixement</td><td>GDScript / C#</td></tr>
+          <tr><td>GameMaker</td><td>Molt directe per a 2D</td><td>GML</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Idea clau</div>
+        <p>Aprendre <strong>un</strong> motor bé (conceptes de GameObject, component, cicle de vida, física...) us facilita molt aprendre els altres: les idees es repeteixen, només canvia el vocabulari.</p>
+      </div>
+    `
+  },
+  {
+    title: "Unity com a eina del curs",
+    body: `
+      <p>Farem servir <strong>Unity</strong>, tot i el nom ("3D"), també és l'estàndard per a jocs <strong>2D</strong> — que és el que farem tot el curs.</p>
+      <h3>Instal·lació — passos</h3>
+      <ol>
+        <li>Baixar <strong>Unity Hub</strong> des de <span class="mono">unity.com/download</span>.</li>
+        <li>Des del Hub, instal·lar la darrera versió <strong>LTS</strong> (<em>Long Term Support</em>): és la recomanada per treballar, perquè és estable i rep manteniment durant més temps que les versions "Tech Stream".</li>
+        <li>Durant la instal·lació, marcar el mòdul d'edició per a la plataforma de destí i <strong>Visual Studio Community</strong> si no el teniu ja.</li>
+      </ol>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>No barregeu versions dins d'un mateix projecte. Un projecte creat amb una LTS s'ha d'obrir sempre amb la mateixa versió (o una de posterior compatible), mai amb una anterior.</p>
+      </div>
+      <h3>On trobar ajuda oficial</h3>
+      <table class="data">
+        <thead><tr><th>Recurs</th><th>Per a què serveix</th><th>Adreça</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Manual de Unity</strong></td><td>Conceptual, "com fer les coses"</td><td><span class="mono">docs.unity3d.com/Manual</span></td></tr>
+          <tr><td><strong>Scripting Reference</strong></td><td>Tècnic, cada classe i mètode de l'API</td><td><span class="mono">docs.unity3d.com/ScriptReference</span></td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Idea clau</div>
+        <p>Quan tingueu un dubte de codi ("què fa exactament <span class="mono">Rigidbody2D</span>?"), el primer lloc a mirar és la Scripting Reference, no un tutorial de YouTube: és la font oficial i sempre reflecteix la versió instal·lada.</p>
+      </div>
+    `
+  },
+  {
+    title: "OOP i el llenguatge C#",
+    body: `
+      <p>Unity es programa amb <strong>C#</strong>, un llenguatge <strong>orientat a objectes (OOP)</strong>.</p>
+      <h3>Idees que ens acompanyaran tot el curs</h3>
+      <table class="data">
+        <thead><tr><th>Concepte</th><th>Què vol dir</th><th>Exemple al curs</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Classe</strong></td><td>Plantilla que defineix dades i comportament</td><td><span class="mono">ScrPlayer</span>, <span class="mono">ScrBullet</span></td></tr>
+          <tr><td><strong>Objecte / Instància</strong></td><td>Un exemplar concret creat a partir d'una classe</td><td>La nau del jugador a l'escena</td></tr>
+          <tr><td><strong>Encapsulació</strong></td><td>Amagar les dades internes i exposar només el necessari</td><td><span class="mono">[SerializeField] private</span></td></tr>
+          <tr><td><strong>Mètode</strong></td><td>Una acció o comportament que pot fer la classe</td><td><span class="mono">Disparar()</span>, <span class="mono">Start()</span>, <span class="mono">Update()</span></td></tr>
+          <tr><td><strong>Propietat</strong></td><td>Una dada de la classe, amb control opcional de com es llegeix o s'escriu</td><td><span class="mono">public float VelMaxima</span></td></tr>
+          <tr><td><strong>Component</strong></td><td>A Unity, un tros de comportament que s'enganxa a un GameObject</td><td>Un script és un component més</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Mètodes vs. propietats:</strong> un mètode és una acció que la classe pot fer (<span class="mono">Disparar()</span>, <span class="mono">Saltar()</span>); una propietat és una dada que la classe té i que pot exposar-se amb control. No cal dominar-ho tot avui: de moment ens quedem amb variables senzilles (<span class="mono">[SerializeField] private</span>) i mètodes bàsics com <span class="mono">Start()</span> i <span class="mono">Update()</span>; les propietats les anirem introduint més endavant quan calgui protegir dades com la vida o els punts.</p>
+      <h3>Anatomia mínima d'un script de Unity</h3>
+      <pre>using UnityEngine;
+
+public class ScrPlayer : MonoBehaviour
+{
+    <span class="cm">// Variables: la "memòria" de l'objecte</span>
+    [SerializeField] private float velocitat = 5f;
+
+    <span class="cm">// Mètodes: el "comportament"</span>
+    void Start()
+    {
+        <span class="cm">// s'executa un cop, a l'inici</span>
+    }
+
+    void Update()
+    {
+        <span class="cm">// s'executa cada frame</span>
+    }
+}</pre>
+      <div class="panel-box tip">
+        <div class="eyebrow">Idea clau</div>
+        <p><span class="mono">MonoBehaviour</span> és la classe base que fa que un script normal es converteixi en un <strong>component</strong> que Unity sap com gestionar (crida <span class="mono">Start()</span>, <span class="mono">Update()</span>, etc. per nosaltres). Sense heretar de <span class="mono">MonoBehaviour</span>, el script no es pot arrossegar a un GameObject.</p>
+      </div>
+      <div class="panel-box deepen">
+        <div class="eyebrow">Per anar més enllà</div>
+        <p><span class="mono">Start()</span> i <span class="mono">Update()</span> són només dos dels mètodes del <strong>cicle de vida</strong> — a la Sessió 2 en veurem més (<span class="mono">Awake</span>, <span class="mono">FixedUpdate</span>, <span class="mono">LateUpdate</span>...).</p>
+      </div>
+    `
+  },
+  {
+    title: "Generant el meu primer projecte 2D",
+    body: `
+      <p><strong>Passos</strong> (fets en directe pel professor, l'alumnat replica):</p>
+      <ol>
+        <li>Obrir <strong>Unity Hub</strong> → <strong>New Project</strong>.</li>
+        <li>Triar la plantilla <strong>2D (Core)</strong> — no 3D, no URP/HDRP per ara.</li>
+        <li>Nom del projecte: convenció del curs, per exemple <span class="mono">SpaceShooter2D</span>.</li>
+        <li>Triar la carpeta on es desarà (recomanable: una carpeta clara, sense espais ni accents al camí).</li>
+        <li><strong>Create project</strong> i esperar que Unity l'obri (la primera vegada triga una mica més).</li>
+      </ol>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>Eviteu crear el projecte dins de carpetes sincronitzades en temps real per núvol (Dropbox/OneDrive en mode "sempre sincronitzat") mentre treballeu: pot provocar fitxers bloquejats o corromputs. Millor treballar en local i pujar-ho després si cal.</p>
+      </div>
+    `
+  },
+  {
+    title: "Estructura en el disc del projecte generat",
+    body: `
+      <p>Un projecte de Unity <strong>no és un sol fitxer</strong>: és una carpeta amb una estructura fixa.</p>
+      <table class="data">
+        <thead><tr><th>Carpeta</th><th>Contingut</th><th>Es puja a un repositori?</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">Assets/</span></td><td><strong>Tot</strong> el que és nostre: scripts, sprites, escenes, prefabs</td><td>✅ Sí</td></tr>
+          <tr><td><span class="mono">Packages/</span></td><td>Referències als paquets instal·lats</td><td>✅ Sí</td></tr>
+          <tr><td><span class="mono">ProjectSettings/</span></td><td>Configuració del projecte</td><td>✅ Sí</td></tr>
+          <tr><td><span class="mono">Library/</span></td><td>Cache generada automàticament per Unity</td><td>❌ No (es regenera sola)</td></tr>
+          <tr><td><span class="mono">Temp/, Logs/, obj/</span></td><td>Fitxers temporals</td><td>❌ No</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Idea clau</div>
+        <p>Si mai compartiu un projecte per USB o núvol i pesa "massa", és gairebé segur que hi heu inclòs la carpeta <span class="mono">Library/</span> per error — es pot esborrar sense perdre res, Unity la torna a crear.</p>
+      </div>
+      <p>Dins d'<span class="mono">Assets/</span>, crearem sempre la mateixa carpeta arrel del curs: <strong><span class="mono">_Project/</span></strong> (el guió baix la fa aparèixer la primera a la llista), amb subcarpetes com <span class="mono">Scripts/</span>, <span class="mono">Prefabs/</span>, <span class="mono">Sprites/</span>, <span class="mono">Scenes/</span>.</p>
+    `
+  },
+  {
+    title: "La interfície de Unity",
+    body: `
+      <h3>Els panells principals</h3>
+      <table class="data">
+        <thead><tr><th>Panell</th><th>Per a què serveix</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Scene</strong></td><td>On "col·loquem" els objectes; és la vista d'edició</td></tr>
+          <tr><td><strong>Game</strong></td><td>Com es veurà el joc en executar-lo (Play)</td></tr>
+          <tr><td><strong>Hierarchy</strong></td><td>Llista de tots els GameObjects de l'escena actual</td></tr>
+          <tr><td><strong>Inspector</strong></td><td>Mostra i permet editar les propietats de l'objecte seleccionat</td></tr>
+          <tr><td><strong>Project</strong></td><td>El contingut de la carpeta <span class="mono">Assets/</span> (els nostres recursos)</td></tr>
+          <tr><td><strong>Console</strong></td><td>Missatges, avisos i <strong>errors</strong> — el panell més important quan alguna cosa falla</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box warn">
+        <div class="eyebrow">El "Play Mode Trap"</div>
+        <p>Tot el que canvieu a l'Inspector <strong>mentre esteu en Play</strong> es perd en sortir-ne (Unity torna a l'estat anterior). És un error clàssic passar-se 10 minuts ajustant un valor en Play i perdre-ho tot en prémer Stop. Ajusteu valors fora de Play, o anoteu-los.</p>
+      </div>
+      <p><strong>Moviment bàsic a la vista Scene:</strong> botó dret + WASD per moure la càmera, roda del ratolí per fer zoom, <span class="mono">F</span> amb un objecte seleccionat per centrar-hi la vista.</p>
+    `
+  },
+  {
+    title: "Conceptes bàsics de Unity",
+    body: `
+      <table class="data">
+        <thead><tr><th>Concepte</th><th>Definició curta</th></tr></thead>
+        <tbody>
+          <tr><td><strong>GameObject</strong></td><td>Un contenidor buit dins l'escena. Per si sol no fa res.</td></tr>
+          <tr><td><strong>Component</strong></td><td>Allò que dona comportament a un GameObject (Transform, Sprite Renderer, un script...)</td></tr>
+          <tr><td><strong>Asset</strong></td><td>Qualsevol recurs guardat al projecte: imatge, so, script, escena...</td></tr>
+          <tr><td><strong>Prefab</strong></td><td>Una "plantilla" reutilitzable d'un GameObject (amb tots els seus components) que es pot instanciar moltes vegades</td></tr>
+          <tr><td><strong>Script</strong></td><td>Un component escrit per nosaltres en C#</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Analogia</div>
+        <p>Un <strong>GameObject</strong> és com una fitxa de personatge en blanc. Els <strong>Components</strong> són les característiques que hi escrius (força, vida, aspecte...). Un <strong>Prefab</strong> és fer-ne fotocòpies ja emplenades per repartir-les a taula. Un <strong>Asset</strong> és qualsevol material que tens sobre la taula abans d'usar-lo (dau, retolador, fitxa en blanc...).</p>
+      </div>
+      <p>Tot GameObject <strong>sempre</strong> té com a mínim un component: el <strong>Transform</strong> (posició, rotació i escala) — no es pot treure.</p>
+      <div class="panel-box deepen">
+        <div class="eyebrow">Per anar més enllà</div>
+        <p>Investigueu la diferència entre un GameObject amb un <span class="mono">Transform</span> (2D/3D genèric) i un amb <span class="mono">RectTransform</span> (UI). Per què la UI necessita un sistema de coordenades diferent?</p>
+      </div>
+    `
+  },
+  {
+    title: "Assets: organització i importació",
+    body: `
+      <p><strong>Regla d'or:</strong> una estructura de carpetes clara des del primer dia estalvia hores més endavant.</p>
+      <pre>Assets/
+└── _Project/
+    ├── Scripts/
+    ├── Prefabs/
+    ├── Sprites/
+    ├── Scenes/
+    └── Audio/</pre>
+      <h3>Nomenclatura del curs (obligatòria a partir d'ara)</h3>
+      <table class="data">
+        <thead><tr><th>Prefix</th><th>Tipus d'asset</th><th>Exemple</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">Scr</span></td><td>Script</td><td><span class="mono">ScrPlayer.cs</span></td></tr>
+          <tr><td><span class="mono">PF_</span></td><td>Prefab</td><td><span class="mono">PF_Bullet</span></td></tr>
+          <tr><td><span class="mono">SPR_</span></td><td>Sprite</td><td><span class="mono">SPR_Spaceshooter</span></td></tr>
+          <tr><td><span class="mono">SC_</span></td><td>Escena</td><td><span class="mono">SC_Nivell1</span></td></tr>
+        </tbody>
+      </table>
+      <p><strong>Importar un asset:</strong> arrossegar el fitxer des de l'explorador de Windows/Finder directament a la finestra <strong>Project</strong>, dins la subcarpeta corresponent.</p>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>No reanomeneu ni moveu assets des de fora de Unity (des de l'explorador de fitxers) un cop ja estan al projecte: Unity perd la pista de les referències (el fitxer <span class="mono">.meta</span> associat) i es poden trencar prefabs o escenes que els facin servir. Feu-ho sempre <strong>dins</strong> de la finestra Project.</p>
+      </div>
+    `
+  },
+  {
+    title: "Importar el Spritesheet i el Sprite Editor",
+    body: `
+      <p>Farem servir el fitxer <span class="mono">Spritesheet_spaceshooter.png</span>: una única imatge que conté diversos sprites (nau, bales, enemics...) enganxats en graella.</p>
+      <p><strong>Pas 1.</strong> Importar-lo a <span class="mono">_Project/Sprites/</span>.</p>
+      <p><strong>Pas 2.</strong> Configurar-lo a l'Inspector (amb la imatge seleccionada):</p>
+      <ul>
+        <li><strong>Texture Type:</strong> <span class="mono">Sprite (2D and UI)</span></li>
+        <li><strong>Sprite Mode:</strong> <span class="mono">Multiple</span> (imprescindible: li diem que dins hi ha diversos sprites, no un de sol)</li>
+        <li><strong>Pixels Per Unit:</strong> ajustar segons la mida real dels sprites</li>
+        <li><strong>Filter Mode:</strong> <span class="mono">Point (no filter)</span> si volem un estil pixelat nítid</li>
+      </ul>
+      <p><strong>Pas 3.</strong> Obrir el <strong>Sprite Editor</strong> (botó a l'Inspector) i fer servir <strong>Slice → Automatic</strong> (o <span class="mono">Grid By Cell Size</span> si la graella és regular) perquè Unity retalli automàticament cada sprite individual. <strong>Apply</strong> per confirmar els talls.</p>
+      <div class="panel-box tip">
+        <div class="eyebrow">Idea clau</div>
+        <p>Després de retallar-lo, a la finestra Project veureu una fletxa desplegable al costat de la imatge: conté cada sprite individual ja separat, llest per arrossegar a l'escena.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>Si oblideu posar <span class="mono">Sprite Mode</span> en <span class="mono">Multiple</span> abans d'obrir el Sprite Editor, Unity només us deixarà treballar amb la imatge sencera com si fos un únic sprite.</p>
+      </div>
+    `
+  },
+  {
+    title: "Creació del Player",
+    body: `
+      <p>Ara construïm el primer GameObject jugable.</p>
+      <p><strong>Pas 1.</strong> Arrossegar el sprite de la nau (del spritesheet ja retallat) a l'escena → es crea automàticament un GameObject amb un <strong>Sprite Renderer</strong>. Renombrar-lo <strong>Player</strong>.</p>
+      <p><strong>Pas 2.</strong> Afegir components (botó <em>Add Component</em> a l'Inspector):</p>
+      <table class="data">
+        <thead><tr><th>Component</th><th>Configuració inicial</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rigidbody 2D</strong></td><td><span class="mono">Body Type: Dynamic</span>, <span class="mono">Gravity Scale: 0</span> (no volem que caigui), <span class="mono">Freeze Rotation Z</span> marcat</td></tr>
+          <tr><td><strong>Box Collider 2D</strong></td><td>Ajustar la mida a la silueta de la nau (botó <em>Edit Collider</em>)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box warn">
+        <div class="eyebrow">Error freqüent</div>
+        <p>Oblidar-se de posar <span class="mono">Gravity Scale = 0</span> és un dels errors més típics de la sessió: la nau "cau" fora de pantalla en prémer Play i sembla que el script no funciona quan en realitat és la física.</p>
+      </div>
+      <p><strong>Pas 3.</strong> Crear l'script <span class="mono">ScrPlayer.cs</span> dins de <span class="mono">_Project/Scripts/</span> i arrossegar-lo com a component del Player:</p>
+      <pre>using UnityEngine;
+
+public class ScrPlayer : MonoBehaviour
+{
+    [Header("Moviment")]
+    [SerializeField] private float velocitat = 5f;
+
+    void Update()
+    {
+        <span class="cm">// El moviment complet (input + física) es treballarà a la Sessió 2</span>
+    }
+}</pre>
+      <p><strong>Pas 4.</strong> Crear el fill "Canó": dins la Hierarchy, clic dret sobre <span class="mono">Player</span> → <span class="mono">Create Empty</span> → renombrar <strong>Cano</strong> i col·locar-lo (arrossegant-lo a la vista Scene) a la punta de la nau, per on sortiran els futurs trets.</p>
+      <div class="panel-box tip">
+        <div class="eyebrow">Per què un fill i no un punt fix?</div>
+        <p>Fer-lo <strong>fill</strong> del Player fa que es mogui automàticament amb la nau (herència de <span class="mono">Transform</span>). Guardar-ne la referència des de <span class="mono">ScrPlayer</span> (amb <span class="mono">[SerializeField] private Transform cano;</span>) ens permetrà, a la propera sessió, fer sortir les bales exactament des d'aquest punt.</p>
+      </div>
+      <div class="panel-box tip">
+        <div class="eyebrow">Resum de la sessió</div>
+        <p style="margin-bottom:8px;"><strong>1.</strong> Un motor de joc ens estalvia reinventar renderitzat, física i inputs.</p>
+        <p style="margin-bottom:8px;"><strong>2.</strong> Unity es programa en <strong>C#</strong>, un llenguatge <strong>OOP</strong>: classes, objectes, encapsulació.</p>
+        <p style="margin-bottom:8px;"><strong>3.</strong> Un <strong>GameObject</strong> és buit; els <strong>Components</strong> li donen comportament; un <strong>script</strong> és un component.</p>
+        <p style="margin-bottom:8px;"><strong>4.</strong> Estructura fixa: <span class="mono">Assets/</span>, nomenclatura <span class="mono">Scr</span>/<span class="mono">PF_</span>/<span class="mono">SPR_</span>/<span class="mono">SC_</span>, carpeta arrel <span class="mono">_Project/</span>.</p>
+        <p><strong>5.</strong> El Player d'avui té cos (Sprite Renderer), física (Rigidbody2D + Collider) i ja té preparat el punt de dispar (Canó) per a la Sessió 2.</p>
+      </div>
+    `
+  }
+];
+
+/* Repte pràctic: tasques obligatòries (checklist amb progrés) + reptes opcionals */
+const CHALLENGE = {
+  intro: "Objectiu de la sessió: tenir Unity instal·lat, un projecte 2D creat amb l'estructura de carpetes correcta, el spritesheet importat i retallat, i un GameObject Player amb tots els components bàsics i el seu fill Canó. Marca cada pas a mesura que el completis.",
+  tasks: [
+    "Instal·lar Unity Hub i la darrera versió LTS.",
+    "Crear un projecte nou amb la plantilla 2D (Core) anomenat <span class='mono'>SpaceShooter2D</span>.",
+    "Crear l'estructura de carpetes <span class='mono'>_Project/Scripts</span>, <span class='mono'>_Project/Prefabs</span>, <span class='mono'>_Project/Sprites</span>, <span class='mono'>_Project/Scenes</span>.",
+    "Importar <span class='mono'>Spritesheet_spaceshooter.png</span> a <span class='mono'>_Project/Sprites</span>.",
+    "Configurar la imatge com a <span class='mono'>Sprite (2D and UI)</span> amb <span class='mono'>Sprite Mode: Multiple</span>.",
+    "Obrir el Sprite Editor i retallar els sprites amb <span class='mono'>Slice → Automatic</span>.",
+    "Arrossegar el sprite de la nau a l'escena i renombrar el GameObject com <span class='mono'>Player</span>.",
+    "Afegir <span class='mono'>Rigidbody 2D</span> (Gravity Scale 0, Freeze Rotation Z) i <span class='mono'>Box Collider 2D</span> ajustat a la silueta.",
+    "Crear l'script <span class='mono'>ScrPlayer.cs</span> dins <span class='mono'>_Project/Scripts</span> i arrossegar-lo al Player.",
+    "Crear el GameObject fill <span class='mono'>Cano</span> dins de <span class='mono'>Player</span>, col·locat a la punta de la nau.",
+    "Console neta: 0 errors i 0 avisos."
+  ],
+  optional: [
+    "Explora el Manual de Unity i busca què fa exactament <span class='mono'>Freeze Rotation</span>. Per què el volem marcat en un joc 2D vist des de dalt?",
+    "Prova a canviar el <span class='mono'>Pixels Per Unit</span> del spritesheet i observa com afecta la mida de la nau a l'escena. Quina relació hi ha entre aquest valor i la mida de la teva càmera?",
+    "Investiga la diferència entre <span class='mono'>Sprite Mode: Single</span> i <span class='mono'>Multiple</span> provant-ho tu mateix amb una altra imatge.",
+    "Demana a una IA que t'expliqui què és <span class='mono'>[SerializeField]</span> i avalua si l'explicació que et dona és correcta i completa comparant-la amb la Scripting Reference oficial."
+  ]
+};
+
+/* 10 preguntes · opcions A-D · l'opció E (NS/NC) l'afegeix el motor */
+const TEST = {
+  name: "Test - Unity 2D Sessió 1",
+  questions: [
+    { q:"Què és, principalment, un motor de videojocs?", opts:["Un conjunt d'eines que resol problemes comuns a tots els jocs (renderitzat, física, inputs...)","Un editor d'imatges","Un llenguatge de programació","Un sistema operatiu per a videojocs"], correct:0 },
+    { q:"Per què es recomana instal·lar la versió LTS de Unity?", opts:["És la més ràpida gràficament","És estable i rep manteniment durant més temps","És l'única gratuïta","És obligatòria per fer 2D"], correct:1 },
+    { q:"On es troba la documentació tècnica de cada classe i mètode de Unity?", opts:["Al Manual","Al fòrum d'Unity","A la Scripting Reference","A l'Asset Store"], correct:2 },
+    { q:"En OOP, què és una \"instància\"?", opts:["El nom d'un mètode","Un tipus de variable","Un component de Unity exclusivament","Un objecte concret creat a partir d'una classe"], correct:3 },
+    { q:"Per què fem servir [SerializeField] private en comptes de public?", opts:["Per mantenir la variable protegida (encapsulació) però editable des de l'Inspector","Perquè public dona error de compilació","Perquè és més ràpid d'executar","No hi ha cap diferència real"], correct:0 },
+    { q:"Quina carpeta d'un projecte Unity NO cal compartir ni pujar a un repositori?", opts:["Assets/","Library/","ProjectSettings/","Packages/"], correct:1 },
+    { q:"Què és un GameObject per si sol, sense cap component afegit (a banda del Transform)?", opts:["Sempre té com a mínim un Sprite Renderer","Una còpia d'un prefab","Un contenidor buit que no fa res","Un script"], correct:2 },
+    { q:"Quina relació hi ha entre un Prefab i les seves instàncies a l'escena?", opts:["No tenen cap relació un cop creades","Cada instància és independent del Prefab des del primer moment","Un Prefab només es pot instanciar un cop","Un canvi al Prefab s'aplica a totes les seves instàncies"], correct:3 },
+    { q:"Per què cal posar Sprite Mode: Multiple abans d'obrir el Sprite Editor en un spritesheet?", opts:["Perquè Unity sàpiga que la imatge conté diversos sprites a retallar","Per canviar el color de la imatge","Per reduir el pes del fitxer","No cal, és el mode per defecte"], correct:0 },
+    { q:"Per què és habitual posar Gravity Scale = 0 al Rigidbody 2D del Player en un joc com el nostre?", opts:["Perquè el joc vagi més ràpid","Perquè és obligatori en 2D","Perquè no volem que la gravetat el faci caure fora de pantalla","Perquè millora el rendiment gràfic"], correct:2 }
+  ]
+};
+
+/* =========================================================================
+   STREAMING_CHUNK:Iniciant el MOTOR (no cal tocar res a partir d'aquí)...
+   ========================================================================= */
+const OPEN_KEY = TEST.name + " · OBERTURA";
+const REVIEW_KEY = TEST.name;
+
+const STORAGE_KEY = 'unity2d_attempt_' + TEST.name;
+
+let currentIndex = 0;
+let currentView = 'module';
+let studentInfo = null;
+let quizQuestions = [], quizAnswers = [], currentQuestionIdx = 0;
+let quizSent = false;
+let lastAttempt = null;   // intent ja realitzat en aquest navegador
+
+/* ---------- PERSISTÈNCIA DE L'INTENT ---------- */
+function saveAttempt(attempt){
+  lastAttempt = attempt;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(attempt)); } catch(e){}
+}
+
+function loadAttempt(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const a = JSON.parse(raw);
+    if(!a || !Array.isArray(a.order) || !Array.isArray(a.answers)) return null;
+    if(a.order.length !== TEST.questions.length) return null;   // el test ha canviat: intent no vàlid
+    return a;
+  } catch(e){ return null; }
+}
+
+function clearAttempt(){
+  lastAttempt = null;
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+}
+
+// Reconstrueix les preguntes i respostes de l'intent desat, per poder-ne veure la revisió
+function restoreAttempt(a){
+  quizQuestions = a.order.map(function(idx){ return TEST.questions[idx]; });
+  quizAnswers = a.answers.slice();
+  studentInfo = a.student;
+  quizSent = true;
+}
+let checkedTasks = [];
+let teacherRows = [], filterOnlyThis = true, viewMode = 'submissions', autoTimer = null;
+let oberturaUnlocked = false, revisioUnlocked = false;
+
+function esc(v){
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function closeOverlay(id){ document.getElementById(id).classList.add('hidden'); }
+function openOverlay(id){ document.getElementById(id).classList.remove('hidden'); }
+
+/* ---------- NAVEGACIÓ ---------- */
+function buildGaugeTicks(){
+  document.getElementById('gaugeTicks').innerHTML = MODULES.map(function(){ return '<div></div>'; }).join('');
+}
+
+function buildSidebar(){
+  const sb = document.getElementById('sidebar');
+  let html = '<div class="sidebar-label">Diapositives</div>';
+  MODULES.forEach(function(m,i){
+    html += '<div class="mod-item' + (currentView==='module' && i===currentIndex ? ' active' : '') + '" onclick="goTo(' + i + ')">'
+          + '<span class="tag">' + String(i+1).padStart(2,'0') + '</span><span>' + esc(m.title) + '</span></div>';
+  });
+  html += '<div class="sidebar-label">Avaluació</div>'
+        + '<div class="mod-item special quiz' + (currentView==='quiz'?' active':'') + '" onclick="openQuizGate()"><span class="tag">TEST</span><span>Fer el test</span></div>'
+        + '<div class="mod-item special' + (currentView==='challenge'?' active':'') + '" onclick="goToChallenges()"><span class="tag">✦</span><span>Repte pràctic</span></div>';
+  sb.innerHTML = html;
+}
+
+function updateGauge(){
+  const pct = ((currentIndex+1)/MODULES.length)*100;
+  document.getElementById('gaugeFill').style.width = pct + '%';
+  document.getElementById('navLabel').textContent = 'Diapositiva ' + (currentIndex+1) + ' de ' + MODULES.length;
+  document.getElementById('navModTitle').textContent = MODULES[currentIndex].title;
+  document.getElementById('prevBtn').disabled = (currentIndex === 0);
+  document.getElementById('nextBtn').disabled = (currentIndex === MODULES.length-1);
+}
+
+function renderModule(i){
+  const m = MODULES[i];
+  document.getElementById('content').innerHTML =
+    '<div class="eyebrow">Diapositiva ' + (i+1) + ' de ' + MODULES.length + '</div>'
+    + '<h2>' + esc(m.title) + '</h2>'
+    + m.body
+    + '<div class="bottom-nav">'
+    + '<button class="btn" onclick="goTo(' + (i-1) + ')"' + (i===0?' disabled':'') + '>‹ Anterior</button>'
+    + (i===MODULES.length-1
+        ? '<button class="btn primary" onclick="goToChallenges()">Anar al repte pràctic ›</button>'
+        : '<button class="btn primary" onclick="goTo(' + (i+1) + ')">Següent ›</button>')
+    + '</div>';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function goTo(i){
+  if(i < 0 || i >= MODULES.length) return;
+  currentIndex = i;
+  currentView = 'module';
+  renderModule(i);
+  buildSidebar();
+  updateGauge();
+}
+
+document.addEventListener('keydown', function(e){
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if(tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const anyOverlay = ['quizGate','quizModal','teacherGate','teacherPanel']
+    .some(function(id){ return !document.getElementById(id).classList.contains('hidden'); });
+  if(anyOverlay){
+    if(e.key === 'Escape'){ ['quizGate','quizModal','teacherGate','teacherPanel'].forEach(closeOverlay); }
+    return;
+  }
+  if(currentView !== 'module') return;
+  if(e.key === 'ArrowRight') goTo(currentIndex+1);
+  if(e.key === 'ArrowLeft') goTo(currentIndex-1);
+});
+
+/* ---------- REPTE PRÀCTIC ---------- */
+function goToChallenges(){
+  currentView = 'challenge';
+  if(checkedTasks.length !== CHALLENGE.tasks.length) checkedTasks = CHALLENGE.tasks.map(function(){ return false; });
+
+  let html = '<div class="eyebrow">Pràctica de la sessió</div><h2>Repte pràctic</h2>'
+    + '<p>' + CHALLENGE.intro + '</p>'
+    + '<div class="progress-row"><div class="progress-bar"><div id="challengeBar"></div></div><div class="progress-pct" id="challengePct">0%</div></div>';
+
+  CHALLENGE.tasks.forEach(function(t,i){
+    html += '<label class="check-item' + (checkedTasks[i]?' done':'') + '" id="task' + i + '">'
+          + '<input type="checkbox" onchange="toggleTask(' + i + ')"' + (checkedTasks[i]?' checked':'') + '>'
+          + '<span>' + t + '</span></label>';
+  });
+
+  html += '<h3 style="margin-top:30px;">Reptes opcionals · no puntuables</h3>'
+        + '<p>Per a qui vulgui anar més enllà del contingut mínim. No compten per a la nota.</p>';
+  CHALLENGE.optional.forEach(function(r,i){
+    html += '<div class="panel-box deepen"><div class="eyebrow">Repte ' + (i+1) + '</div><p>' + r + '</p></div>';
+  });
+
+  html += '<div class="bottom-nav"><button class="btn" onclick="goTo(currentIndex)">‹ Tornar a les diapositives</button>'
+        + '<button class="btn primary" onclick="openQuizGate()">Fer el test ›</button></div>';
+
+  document.getElementById('content').innerHTML = html;
+  buildSidebar();
+  updateChallengeProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function toggleTask(i){
+  checkedTasks[i] = !checkedTasks[i];
+  document.getElementById('task'+i).classList.toggle('done', checkedTasks[i]);
+  updateChallengeProgress();
+}
+
+function updateChallengeProgress(){
+  const done = checkedTasks.filter(Boolean).length;
+  const pct = Math.round((done / CHALLENGE.tasks.length) * 100);
+  const bar = document.getElementById('challengeBar');
+  if(bar){ bar.style.width = pct + '%'; document.getElementById('challengePct').textContent = pct + '%'; }
+}
+
+/* ---------- ACCÉS AL TEST ---------- */
+function openQuizGate(){
+  // Si aquest navegador ja té un intent fet, anem directament al resultat
+  if(lastAttempt){
+    restoreAttempt(lastAttempt);
+    currentView = 'quiz';
+    buildSidebar();
+    openOverlay('quizModal');
+    renderResult(lastAttempt.result, true);
+    return;
+  }
+
+  openOverlay('quizGate');
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>Comprovant...</h3><div class="sub">Consultant si el professor ha obert el test.</div>';
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderQuizForm();
+      else renderQuizLocked("El professor encara no ha obert el test.");
+    })
+    .catch(function(){
+      renderQuizLocked("No s'ha pogut comprovar l'estat del test. Revisa la connexió.");
+    });
+}
+
+function renderQuizLocked(msg){
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>🔒 Test bloquejat</h3>'
+    + '<div class="sub">' + esc(msg) + '</div>'
+    + '<div class="panel-box"><p style="font-size:13px; color:var(--text-faint);">Quan el professor l\u2019activi des del seu panell, torna a prémer "Comprovar de nou".</p></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Tancar</button>'
+    + '<button class="btn primary" onclick="openQuizGate()">Comprovar de nou</button></div>';
+}
+
+function renderQuizForm(){
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>✅ Test obert</h3>'
+    + '<div class="sub">Identifica\u2019t abans de començar. Tens ' + TEST.questions.length + ' preguntes.</div>'
+    + '<div class="field"><label>ID d\u2019alumne</label><input id="gateId" inputmode="numeric" placeholder="p. ex. 24"></div>'
+    + '<div class="field"><label>Nom i cognoms</label><input id="gateName" placeholder="El teu nom"></div>'
+    + '<div class="error-msg" id="gateError">Cal omplir l\u2019ID i el nom.</div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Cancel\u00b7la</button>'
+    + '<button class="btn primary" onclick="startQuizFromGate()">Començar el test</button></div>';
+}
+
+function startQuizFromGate(){
+  const id = document.getElementById('gateId').value.trim();
+  const name = document.getElementById('gateName').value.trim();
+  if(!id || !name){
+    document.getElementById('gateError').style.display = 'block';
+    return;
+  }
+  studentInfo = { id: id, name: name };
+  closeOverlay('quizGate');
+  startQuiz();
+}
+
+/* ---------- FLUX DEL TEST ---------- */
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length-1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function startQuiz(){
+  quizQuestions = shuffleArray(TEST.questions);
+  quizAnswers = new Array(quizQuestions.length).fill(null);
+  currentQuestionIdx = 0;
+  quizSent = false;
+  currentView = 'quiz';
+  buildSidebar();
+  openOverlay('quizModal');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const q = quizQuestions[currentQuestionIdx];
+  const letters = ['A','B','C','D'];
+  let optsHtml = q.opts.map(function(o, idx){
+    return '<div class="opt' + (quizAnswers[currentQuestionIdx]===idx?' selected':'') + '" onclick="selectAnswer(' + idx + ')">'
+         + '<span class="letter">' + letters[idx] + '</span><span>' + esc(o) + '</span></div>';
+  }).join('');
+  optsHtml += '<div class="opt' + (quizAnswers[currentQuestionIdx]===4?' selected':'') + '" onclick="selectAnswer(4)">'
+            + '<span class="letter">E</span><span>NS/NC (no ho sé / no contesto)</span></div>';
+
+  const answered = quizAnswers.filter(function(a){ return a !== null; }).length;
+
+  document.getElementById('quizBody').innerHTML =
+    '<div class="quiz-progress">Pregunta ' + (currentQuestionIdx+1) + ' de ' + quizQuestions.length
+      + ' &nbsp;·&nbsp; respostes: ' + answered + '/' + quizQuestions.length + '</div>'
+    + '<div class="q-block"><div class="q-text">' + esc(q.q) + '</div>' + optsHtml + '</div>'
+    + '<div class="modal-actions" id="quizActions">'
+    + '<button class="btn small" onclick="askExitQuiz()" style="margin-right:auto;">✕ Sortir</button>'
+    + '<button class="btn" onclick="quizPrev()"' + (currentQuestionIdx===0?' disabled':'') + '>‹ Anterior</button>'
+    + (currentQuestionIdx === quizQuestions.length-1
+        ? '<button class="btn primary" onclick="finishQuiz()">Finalitzar</button>'
+        : '<button class="btn primary" onclick="quizNext()">Següent ›</button>')
+    + '</div>';
+}
+
+function askExitQuiz(){
+  document.getElementById('quizActions').innerHTML =
+    '<span style="margin-right:auto; font-size:12.5px; color:var(--red);">Si surts ara perdràs les respostes.</span>'
+    + '<button class="btn" onclick="renderQuizQuestion()">Continuar el test</button>'
+    + '<button class="btn danger" onclick="exitQuiz()">Sortir igualment</button>';
+}
+
+function exitQuiz(){
+  closeOverlay('quizModal');
+  quizQuestions = []; quizAnswers = []; currentQuestionIdx = 0; studentInfo = null;
+  currentView = 'module';
+  buildSidebar();
+}
+
+function selectAnswer(idx){ quizAnswers[currentQuestionIdx] = idx; renderQuizQuestion(); }
+function quizNext(){ if(currentQuestionIdx < quizQuestions.length-1){ currentQuestionIdx++; renderQuizQuestion(); } }
+function quizPrev(){ if(currentQuestionIdx > 0){ currentQuestionIdx--; renderQuizQuestion(); } }
+
+function finishQuiz(){
+  if(quizSent) return;
+  quizSent = true;
+
+  let correct = 0, wrong = 0, blank = 0;
+  quizQuestions.forEach(function(q, i){
+    const a = quizAnswers[i];
+    if(a === null || a === 4) blank++;
+    else if(a === q.correct) correct++;
+    else wrong++;
+  });
+
+  // Encert +1 · Error -0.333 · NS/NC 0 · normalitzat sobre 10
+  const raw = (correct * 1) - (wrong * (1/3));
+  const grade = Math.round(Math.max(0, raw / quizQuestions.length * 10) * 100) / 100;
+  const result = { correct: correct, wrong: wrong, blank: blank, grade: grade, total: quizQuestions.length };
+
+  // Desem l'intent perquè, si torna a entrar, vagi directe al resultat
+  saveAttempt({
+    student: studentInfo,
+    order: quizQuestions.map(function(q){ return TEST.questions.indexOf(q); }),
+    answers: quizAnswers.slice(),
+    result: result,
+    date: new Date().toISOString()
+  });
+
+  renderResult(result, false);
+  sendResultToSheet({ correct: correct, grade: grade, total: result.total });
+}
+
+function renderResult(res, restored){
+  document.getElementById('quizBody').innerHTML =
+    '<div class="result-card">'
+    + '<div class="eyebrow">' + (restored ? 'Test ja realitzat' : 'Resultat') + '</div>'
+    + '<div class="result-score' + (res.grade < SESSION.passMark ? ' fail' : '') + '">' + res.grade.toFixed(2) + '</div>'
+    + '<p style="color:var(--text-faint); font-size:13px;">sobre 10</p>'
+    + '<p>Encerts: <strong>' + res.correct + '</strong> · Errors: <strong>' + res.wrong + '</strong> · NS/NC: <strong>' + res.blank + '</strong> · Total: ' + res.total + '</p>'
+    + '<div id="sendStatus" style="font-size:13px; color:var(--text-faint); margin-top:10px;">'
+      + (restored ? 'Ja vas enviar aquest resultat. Només pots fer el test una vegada.' : 'Enviant resultat...') + '</div>'
+    + '<button class="btn" onclick="checkRevisioStudent()" style="margin-top:16px;">🔍 Comprovar si la revisió ja està disponible</button>'
+    + '<div id="revisioCheckStatus" style="font-size:13px; color:var(--text-faint); margin-top:8px;"></div>'
+    + '<div id="reviewWrap"></div>'
+    + '<div class="modal-actions"><button class="btn primary" onclick="closeQuizResult()" style="margin:16px auto 0;">Tancar</button></div>'
+    + '</div>';
+}
+
+function closeQuizResult(){
+  closeOverlay('quizModal');
+  currentView = 'module';
+  buildSidebar();
+}
+
+function sendResultToSheet(res){
+  const payload = {
+    studentId: studentInfo.id,
+    studentName: studentInfo.name,
+    topic: TEST.name,
+    score: res.correct,
+    grade: res.grade,
+    totalQuestions: res.total
+  };
+  // Sense fixar Content-Type: en mode no-cors només s'admet text/plain, i
+  // l'Apps Script llegeix igualment el JSON cru a e.postData.contents.
+  fetch(SESSION.sheetUrl, { method:'POST', mode:'no-cors', body: JSON.stringify(payload) })
+    .then(function(){
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = '✓ Resultat enviat correctament.';
+    })
+    .catch(function(err){
+      console.error('Error enviant a Sheets:', err);
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = "⚠ No s'ha pogut enviar. Avisa el professor.";
+    });
+}
+
+/* ---------- REVISIÓ DE L'ALUMNE ---------- */
+function checkRevisioStudent(){
+  const status = document.getElementById('revisioCheckStatus');
+  status.textContent = 'Comprovant...';
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderStudentReview();
+      else status.textContent = "Encara no disponible. El professor l'activarà quan tothom hagi acabat.";
+    })
+    .catch(function(){ status.textContent = "No s'ha pogut comprovar (revisa la connexió)."; });
+}
+
+function renderStudentReview(){
+  const letters = ['A','B','C','D'];
+  const answerText = function(q, idx){ return idx === 4 ? 'NS/NC' : (letters[idx] + '. ' + esc(q.opts[idx])); };
+  let html = '<div style="margin-top:18px; text-align:left;">';
+  quizQuestions.forEach(function(q, i){
+    const given = quizAnswers[i];
+    const isCorrect = given === q.correct;
+    html += '<div class="panel-box" style="border-left:3px solid ' + (isCorrect ? 'var(--green)' : 'var(--red)') + ';">'
+          + '<div style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">' + (isCorrect ? '✓ Correcta' : '✗ Incorrecta') + '</div>'
+          + '<div style="font-weight:500; margin-bottom:6px; font-size:13.5px;">' + esc(q.q) + '</div>'
+          + '<div style="font-size:13px; color:var(--text-dim);">La teva resposta: ' + answerText(q, given === null ? 4 : given) + '</div>'
+          + (!isCorrect ? '<div style="font-size:13px; color:var(--green);">Resposta correcta: ' + answerText(q, q.correct) + '</div>' : '')
+          + '</div>';
+  });
+  html += '</div>';
+  document.getElementById('reviewWrap').innerHTML = html;
+  document.getElementById('revisioCheckStatus').textContent = '';
+}
+
+/* ---------- PANELL DEL PROFESSOR ---------- */
+function openTeacherGate(){
+  document.getElementById('teacherError').style.display = 'none';
+  openOverlay('teacherGate');
+  setTimeout(function(){ document.getElementById('teacherPwd').focus(); }, 60);
+}
+
+function tryUnlockTeacher(){
+  if(document.getElementById('teacherPwd').value.trim() !== SESSION.teacherPwd){
+    document.getElementById('teacherError').style.display = 'block';
+    return;
+  }
+  closeOverlay('teacherGate');
+  openOverlay('teacherPanel');
+  document.getElementById('tpSession').textContent = SESSION.name + ' · ' + TEST.name;
+  loadStates();
+  loadTeacherData(false);
+  startAutoRefresh();
+}
+
+function loadStates(){
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ oberturaUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpOberturaStatus').textContent = "No s'ha pogut consultar l'estat."; });
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ revisioUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpRevisioStatus').textContent = "No s'ha pogut consultar l'estat."; });
+}
+
+function updateStateUI(){
+  document.getElementById('tpOberturaStatus').textContent = oberturaUnlocked
+    ? 'Obert: els alumnes ja poden fer el test.'
+    : 'Tancat: els alumnes no poden accedir al test.';
+  const ob = document.getElementById('tpOberturaBtn');
+  ob.textContent = oberturaUnlocked ? 'Tancar el test' : 'Obrir el test';
+  ob.className = 'btn' + (oberturaUnlocked ? ' danger' : ' primary');
+
+  document.getElementById('tpRevisioStatus').textContent = revisioUnlocked
+    ? 'Activada: els alumnes poden veure quines han fallat.'
+    : 'Desactivada: els alumnes encara no veuen les correccions.';
+  const rb = document.getElementById('tpRevisioBtn');
+  rb.textContent = revisioUnlocked ? 'Desactivar' : 'Activar';
+  rb.className = 'btn' + (revisioUnlocked ? ' danger' : '');
+}
+
+function setFlag(key, value, statusElId, callback){
+  const url = SESSION.sheetUrl + '?action=setRevisio&password=' + encodeURIComponent(SESSION.teacherPwd)
+            + '&test=' + encodeURIComponent(key) + '&value=' + value;
+  document.getElementById(statusElId).textContent = 'actualitzant...';
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.status === 'success') callback(json.unlocked);
+      else document.getElementById(statusElId).textContent = (json && json.message) || 'Error del servidor.';
+    })
+    .catch(function(){ document.getElementById(statusElId).textContent = "No s'ha pogut actualitzar."; });
+}
+
+function toggleObertura(){
+  setFlag(OPEN_KEY, !oberturaUnlocked, 'tpOberturaStatus', function(v){ oberturaUnlocked = v; updateStateUI(); });
+}
+function toggleRevisio(){
+  setFlag(REVIEW_KEY, !revisioUnlocked, 'tpRevisioStatus', function(v){ revisioUnlocked = v; updateStateUI(); });
+}
+
+/* ---------- RESULTATS ---------- */
+function loadTeacherData(feedback){
+  const st = document.getElementById('tpStatus');
+  st.textContent = 'Consultant el full de càlcul...';
+  fetch(SESSION.sheetUrl + '?password=' + encodeURIComponent(SESSION.teacherPwd))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(!json || json.status !== 'success' || !Array.isArray(json.data)){
+        st.textContent = (json && json.message) ? json.message : 'Resposta inesperada del servidor.';
+        return;
+      }
+      // Ordre de columnes del full: A Data · B ID · C Nom · D Tema · E Encerts · F Nota · G Total
+      teacherRows = json.data.map(function(row){
+        const v = Object.keys(row).map(function(k){ return row[k]; });
+        return { date:v[0], id:v[1], name:v[2], topic:v[3], score:v[4], grade:parseFloat(v[5]) || 0, total:v[6] };
+      });
+      renderTeacherTable();
+      st.textContent = 'Actualitzat: ' + new Date().toLocaleTimeString('ca-ES');
+    })
+    .catch(function(err){
+      console.error(err);
+      st.textContent = "No s'ha pogut llegir el full (revisa el desplegament de l'Apps Script).";
+    });
+}
+
+function visibleRows(){
+  if(!filterOnlyThis) return teacherRows;
+  return teacherRows.filter(function(r){ return String(r.topic).trim() === TEST.name; });
+}
+
+function toggleFilter(){
+  filterOnlyThis = !filterOnlyThis;
+  document.getElementById('tpFilterBtn').textContent = filterOnlyThis ? 'Només aquest test' : 'Tots els resultats';
+  renderTeacherTable();
+}
+
+function toggleViewMode(){
+  viewMode = (viewMode === 'submissions') ? 'students' : 'submissions';
+  document.getElementById('tpViewBtn').textContent = (viewMode === 'students') ? 'Veure lliuraments' : 'Mitjanes per alumne';
+  document.getElementById('tpTotalLabel').textContent = (viewMode === 'students') ? 'Alumnes' : 'Lliuraments';
+  renderTeacherTable();
+}
+
+function groupByStudent(rows){
+  const map = {};
+  rows.forEach(function(r){
+    const id = String(r.id);
+    if(!map[id]) map[id] = { id:id, name:r.name, grades:[] };
+    map[id].name = r.name || map[id].name;
+    map[id].grades.push(r.grade);
+  });
+  return Object.keys(map).map(function(id){
+    const e = map[id];
+    const sum = e.grades.reduce(function(a,b){ return a+b; }, 0);
+    return { id:e.id, name:e.name, count:e.grades.length, avg:sum/e.grades.length,
+             best:Math.max.apply(null, e.grades), worst:Math.min.apply(null, e.grades) };
+  }).sort(function(a,b){ return b.avg - a.avg; });
+}
+
+function renderTeacherTable(){
+  const wrap = document.getElementById('tpTableWrap');
+  const rows = visibleRows();
+
+  if(!rows.length){
+    wrap.innerHTML = '<p style="color:var(--text-faint); padding:16px; margin:0;">No hi ha resultats per a aquest filtre.</p>';
+    document.getElementById('tpTotal').textContent = '0';
+    document.getElementById('tpAvg').textContent = '0.0';
+    document.getElementById('tpPass').textContent = '0%';
+    return;
+  }
+
+  const badge = function(g){ return '<span class="badge ' + (g >= SESSION.passMark ? 'ok' : 'ko') + '">' + g.toFixed(2) + '</span>'; };
+
+  if(viewMode === 'students'){
+    const grouped = groupByStudent(rows);
+    let html = '<table class="tp"><thead><tr><th>ID</th><th>Alumne</th><th>Tests</th><th>Mitjana</th><th>Millor / Pitjor</th></tr></thead><tbody>';
+    grouped.forEach(function(s){
+      html += '<tr><td class="mono">' + esc(s.id) + '</td><td>' + esc(s.name) + '</td><td class="mono">' + s.count + '</td>'
+            + '<td>' + badge(s.avg) + '</td><td class="mono" style="font-size:11px;">' + s.best.toFixed(2) + ' / ' + s.worst.toFixed(2) + '</td></tr>';
+    });
+    wrap.innerHTML = html + '</tbody></table>';
+
+    const avg = grouped.reduce(function(a,s){ return a + s.avg; }, 0) / grouped.length;
+    const pass = grouped.filter(function(s){ return s.avg >= SESSION.passMark; }).length;
+    document.getElementById('tpTotal').textContent = grouped.length;
+    document.getElementById('tpAvg').textContent = avg.toFixed(1);
+    document.getElementById('tpPass').textContent = Math.round(pass/grouped.length*100) + '%';
+    return;
+  }
+
+  let html = '<table class="tp"><thead><tr><th>Hora</th><th>ID</th><th>Alumne</th><th>Encerts</th><th>Nota</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(function(r){
+    const d = String(r.date);
+    const hora = d.indexOf('T') > -1 ? d.substring(11,19) : (d.indexOf(' ') > -1 ? d.split(' ')[1] : d);
+    html += '<tr><td class="mono" style="font-size:11px;">' + esc(hora) + '</td><td class="mono">' + esc(r.id) + '</td>'
+          + '<td>' + esc(r.name) + '</td><td class="mono">' + esc(r.score) + ' / ' + esc(r.total) + '</td>'
+          + '<td>' + badge(r.grade) + '</td></tr>';
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+
+  const sum = rows.reduce(function(a,r){ return a + r.grade; }, 0);
+  const pass = rows.filter(function(r){ return r.grade >= SESSION.passMark; }).length;
+  document.getElementById('tpTotal').textContent = rows.length;
+  document.getElementById('tpAvg').textContent = (sum/rows.length).toFixed(1);
+  document.getElementById('tpPass').textContent = Math.round(pass/rows.length*100) + '%';
+}
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  if(document.getElementById('tpAuto').checked){
+    autoTimer = setInterval(function(){ loadTeacherData(false); }, SESSION.autoRefreshMs);
+  }
+}
+function stopAutoRefresh(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+function toggleAutoRefresh(){ if(document.getElementById('tpAuto').checked) startAutoRefresh(); else stopAutoRefresh(); }
+
+function exportCSV(){
+  const rows = visibleRows();
+  if(!rows.length) return;
+  let header, lines, suffix;
+
+  if(viewMode === 'students'){
+    header = 'ID;Nom;Tests;Mitjana;Millor;Pitjor';
+    lines = groupByStudent(rows).map(function(s){
+      return [s.id, s.name, s.count, s.avg.toFixed(2), s.best.toFixed(2), s.worst.toFixed(2)].join(';');
+    });
+    suffix = 'Mitjanes';
+  } else {
+    header = 'Data;ID;Nom;Tema;Encerts;Nota;Total';
+    lines = rows.map(function(r){
+      return [r.date, r.id, r.name, r.topic, r.score, r.grade.toFixed(2), r.total].join(';');
+    });
+    suffix = 'Lliuraments';
+  }
+
+  const blob = new Blob(['\uFEFF' + header + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Unity2D_' + (filterOnlyThis ? 'AquestTest' : 'TotElCurs') + '_' + suffix + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetLocalAttempt(){
+  clearAttempt();
+  quizQuestions = []; quizAnswers = []; studentInfo = null; quizSent = false;
+  document.getElementById('tpStatus').textContent = "Intent esborrat: en aquest ordinador es pot tornar a fer el test.";
+}
+
+/* ---------- INICIALITZACIÓ ---------- */
+lastAttempt = loadAttempt();
+document.getElementById('sessionTitleEl').innerHTML = esc(SESSION.name) + '<span>· ' + esc(SESSION.subtitle) + '</span>';
+buildGaugeTicks();
+buildSidebar();
+renderModule(0);
+updateGauge();
+</script>
+</body>
+</html>
