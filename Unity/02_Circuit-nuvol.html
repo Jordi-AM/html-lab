@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuit del núvol · Unity Version Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f1a; --panel:#171a2b; --panel2:#1f2338; --text:#e9ecf5; --muted:#9aa3bf;
+    --accent:#7c5cff; --accent2:#22d3ee; --ok:#34d399; --warn:#fbbf24; --bad:#f87171;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;line-height:1.55}
+  .wrap{max-width:900px;margin:0 auto;padding:32px 16px 64px}
+  header{padding:28px;border-radius:var(--radius);
+    background:radial-gradient(circle at 85% 20%,rgba(34,211,238,.25),transparent 45%),
+               linear-gradient(135deg,#2a1f6b,#171a2b 70%);margin-bottom:28px}
+  .tag{display:inline-block;font:600 12px/1 Inter;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--accent2);background:rgba(34,211,238,.12);padding:6px 10px;border-radius:99px}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,5vw,42px);margin:12px 0 8px}
+  h2{font-family:'Space Grotesk',sans-serif;font-size:22px;margin:0 0 4px}
+  header p{color:var(--muted);margin:0;max-width:640px}
+  .progress{margin-top:20px;background:rgba(255,255,255,.08);border-radius:99px;height:10px;overflow:hidden}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+  .ptext{font-size:13px;color:var(--muted);margin-top:6px}
+  .phase{background:var(--panel);border-radius:var(--radius);padding:22px;margin-bottom:18px;border:1px solid rgba(255,255,255,.05)}
+  .phase-head{display:flex;gap:14px;align-items:center;margin-bottom:12px}
+  .num{flex:0 0 44px;height:44px;border-radius:12px;display:grid;place-items:center;
+    font:700 20px 'Space Grotesk';background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0e0f1a}
+  .sub{color:var(--muted);font-size:14px;margin:0}
+  label.step{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:10px;cursor:pointer}
+  label.step:hover{background:var(--panel2)}
+  label.step input{margin-top:4px;width:18px;height:18px;accent-color:var(--ok);flex:0 0 auto}
+  label.step.done span{color:var(--muted);text-decoration:line-through}
+  code,kbd{font-family:'JetBrains Mono',monospace;font-size:.9em;background:var(--panel2);padding:2px 6px;border-radius:6px;color:var(--accent2)}
+  .box{border-radius:12px;padding:14px 16px;margin-top:12px;font-size:15px}
+  .warn{background:rgba(251,191,36,.1);border-left:4px solid var(--warn)}
+  .gold{background:rgba(52,211,153,.1);border-left:4px solid var(--ok)}
+  .stop{background:rgba(248,113,113,.1);border-left:4px solid var(--bad)}
+  details{background:var(--panel);border-radius:12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.05)}
+  summary{padding:14px 18px;cursor:pointer;font-weight:600;list-style:none}
+  summary::before{content:"▸ ";color:var(--accent2)}
+  details[open] summary::before{content:"▾ "}
+  details div{padding:0 18px 16px;color:var(--muted)}
+  .section-title{font-family:'Space Grotesk';font-size:24px;margin:36px 0 14px}
+  .done-banner{display:none;text-align:center;padding:24px;border-radius:var(--radius);
+    background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(34,211,238,.15));margin-top:18px}
+  .done-banner.show{display:block}
+  footer{color:var(--muted);font-size:13px;text-align:center;margin-top:40px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="tag">Unity Version Control</span>
+  <h1>☁️ Circuit del núvol</h1>
+  <p>El teu projecte ha de sobreviure a tot: un ordinador que peta, un disc que es formata o simplement anar de l'aula a casa. Avui aprendràs a guardar-lo al núvol i, sobretot, a <strong>recuperar-lo</strong>.</p>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="ptext" id="ptext">0 de 0 passos fets</div>
+</header>
+
+<section class="phase">
+  <div class="phase-head"><div class="num">1</div><div><h2>Crear el projecte connectat</h2><p class="sub">A l'inici de la classe</p></div></div>
+  <label class="step"><input type="checkbox"><span>Unity Hub → <strong>New project</strong> → plantilla <strong>2D</strong>.</span></label>
+  <label class="step"><input type="checkbox"><span>Nom del projecte: <code>UFO_NomCognom</code>. Ubicació: una carpeta del disc local (mai OneDrive ni una unitat de xarxa).</span></label>
+  <label class="step"><input type="checkbox"><span>Marca <strong>Use Unity Version Control</strong>. Deixa <strong>sense marcar</strong> <em>Use AI Assistant</em>.</span></label>
+  <label class="step"><input type="checkbox"><span><strong>Create project</strong> i espera que s'obri l'editor.</span></label>
+</section>
+
+<section class="phase">
+  <div class="phase-head"><div class="num">2</div><div><h2>Pujar la feina (check-in)</h2><p class="sub">Ho faràs dues vegades: a mitja classe i al final</p></div></div>
+  <label class="step"><input type="checkbox"><span>Comprova que la <strong>consola no té errors en vermell</strong>.</span></label>
+  <label class="step"><input type="checkbox"><span>Obre la finestra de <strong>Version Control</strong> → pestanya <strong>Pending changes</strong>.</span></label>
+  <label class="step"><input type="checkbox"><span>Marca <strong>TOTS</strong> els fitxers de la llista, no només els que has tocat tu.</span></label>
+  <label class="step"><input type="checkbox"><span>Escriu un comentari que expliqui què has fet (p. ex. <em>"Pickup que gira amb deltaTime"</em>) i prem <strong>Check in</strong>.</span></label>
+  <label class="step"><input type="checkbox"><span>Comprova que <strong>Pending changes queda buit</strong>.</span></label>
+  <div class="box warn">⚠️ <strong>Per què tot?</strong> Si et deixes un fitxer de configuració, quan recuperis el projecte faltarà una peça i sortiran errors estranys, com <code>Default Renderer is missing</code>.</div>
+</section>
+
+<section class="phase">
+  <div class="phase-head"><div class="num">3</div><div><h2>Recuperar-lo en una carpeta nova</h2><p class="sub">Simulem que arribes a casa amb un ordinador buit</p></div></div>
+  <label class="step"><input type="checkbox"><span>Al Hub: <strong>Add → Add from repository</strong>.</span></label>
+  <label class="step"><input type="checkbox"><span>Tria la teva organització i el repositori <code>UFO_NomCognom</code>.</span></label>
+  <label class="step"><input type="checkbox"><span>Ubicació: una <strong>carpeta nova</strong> amb un altre nom, p. ex. <code>UFO_NomCognom_recuperat</code>.</span></label>
+  <label class="step"><input type="checkbox"><span>Obre'l i prem <strong>Play</strong>: el UFO hi és i els pickups giren.</span></label>
+  <div class="box gold">✅ <strong>Regla d'or de les còpies de seguretat:</strong> no esborris mai l'original fins que hagis comprovat que la còpia funciona.</div>
+</section>
+
+<section class="phase">
+  <div class="phase-head"><div class="num">4</div><div><h2>Esborrar l'original</h2><p class="sub">Només si el pas 3 ha funcionat</p></div></div>
+  <label class="step"><input type="checkbox"><span><strong>Tanca Unity</strong> (si no, Windows no deixarà esborrar alguns fitxers).</span></label>
+  <label class="step"><input type="checkbox"><span>Al Hub, als tres punts del projecte <strong>original</strong> → <strong>Remove from list</strong>. Això no esborra res del disc.</span></label>
+  <label class="step"><input type="checkbox"><span>A l'Explorador de Windows, esborra la carpeta <strong>original</strong>.</span></label>
+  <div class="box stop">🛑 Compte a no esborrar la carpeta <code>_recuperat</code>! Llegeix el nom dues vegades abans de prémer Suprimir.</div>
+  <div class="done-banner" id="done"><h2>🛸 Missió complerta!</h2><p class="sub">El teu projecte ja viu al núvol. A casa, fes el pas 3 i el tindràs igual que a l'aula.</p></div>
+</section>
+
+<h2 class="section-title">🆘 Si et passa això...</h2>
+<details><summary>No em surt el repositori a "Add from repository"</summary><div>Comprova que al desplegable hi ha triada la teva organització. Tanca el Hub del tot (també des de la safata del sistema), torna'l a obrir i espera un parell de minuts.</div></details>
+<details><summary>Error "Default Renderer is missing" al projecte recuperat</summary><div>Al check-in et vas deixar algun fitxer. Obre el projecte original, ves a Pending changes, marca-ho tot i fes check-in. Després, al projecte recuperat, fes <strong>Update</strong>.</div></details>
+<details><summary>No puc fer check-in: diu que hi ha errors</summary><div>Arregla primer els errors vermells de la consola (doble clic a l'error et porta a la línia). Si no tens temps, fes <strong>Shelve</strong>: guarda els canvis al núvol sense publicar-los.</div></details>
+<details><summary>Windows no em deixa esborrar la carpeta</summary><div>Unity o el Hub encara tenen fitxers oberts. Tanca'ls tots dos i torna-ho a provar.</div></details>
+<details><summary>A casa tinc una altra versió de Unity</summary><div>Instal·la des del Hub exactament la mateixa versió que a l'aula. Obrir el projecte amb una altra versió pot fer que deixi de funcionar a l'aula.</div></details>
+
+<footer>Institut EMAV · CFGS Animació 2D, 3D i Videojocs · Mòdul 1091</footer>
+</div>
+
+<script>
+  const boxes=[...document.querySelectorAll('label.step input')];
+  const bar=document.getElementById('bar'), ptext=document.getElementById('ptext'), done=document.getElementById('done');
+  function update(){
+    const n=boxes.filter(b=>b.checked).length;
+    boxes.forEach(b=>b.parentElement.classList.toggle('done',b.checked));
+    bar.style.width=(n/boxes.length*100)+'%';
+    ptext.textContent=n+' de '+boxes.length+' passos fets';
+    done.classList.toggle('show',n===boxes.length);
+  }
+  boxes.forEach(b=>b.addEventListener('change',update));
+  update();
+</script>
+</body>
+</html>
