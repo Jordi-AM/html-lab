@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity 2D · Sessió 3 — InputSystem. Moviment del Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* STREAMING_CHUNK:Definint la paleta i les variables base... */
+:root{
+  --bg:#0a0a1a;
+  --panel:#12122b;
+  --panel-2:#1b1b3a;
+  --line:rgba(255,255,255,0.09);
+  --text:#F1F5FF;
+  --text-dim:#B8C0D9;
+  --text-faint:#7580A0;
+  --cyan:#00f3ff;
+  --cyan-dim:rgba(0,243,255,0.14);
+  --violet:#b535ff;
+  --violet-dim:rgba(181,53,255,0.14);
+  --green:#00ff88;
+  --red:#f43f5e;
+  --amber:#f59e0b;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(0,243,255,0.09) 0%, transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(181,53,255,0.09) 0%, transparent 42%);
+  background-attachment:fixed;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+code,.mono,pre{font-family:'JetBrains Mono',monospace;}
+a{color:var(--cyan);}
+
+/* STREAMING_CHUNK:Maquetant la capçalera i l'indicador de progrés... */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:linear-gradient(180deg,#0d0d22 0%,#0a0a1a 100%);
+  border-bottom:1px solid var(--line);
+  padding:14px 24px 12px;
+  backdrop-filter:blur(8px);
+}
+.session-title-row{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px;}
+.session-title{font-size:20px; font-weight:600; letter-spacing:0.2px;}
+.session-title span{color:var(--text-faint); font-weight:400; font-size:13px; margin-left:8px;}
+.teacher-btn{
+  background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line);
+  padding:8px 14px; border-radius:8px; font-size:13px; cursor:pointer;
+  display:flex; align-items:center; gap:6px; transition:all .15s; flex-shrink:0;
+  font-family:'Inter',sans-serif;
+}
+.teacher-btn:hover{border-color:var(--violet); color:var(--violet);}
+
+.nav-row{display:flex; align-items:center; gap:16px;}
+.nav-btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+  width:36px; height:36px; border-radius:8px; cursor:pointer; font-size:18px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s;
+}
+.nav-btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.nav-btn:disabled{opacity:.3; cursor:default;}
+.nav-mid{flex:1; min-width:0;}
+.nav-label{font-size:12px; color:var(--text-faint); margin-bottom:6px; display:flex; justify-content:space-between; gap:12px;}
+.nav-label b{color:var(--text-dim); font-weight:600; white-space:nowrap;}
+.nav-label span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.gauge{height:10px; border-radius:6px; background:var(--panel-2); position:relative; overflow:hidden; border:1px solid var(--line);}
+.gauge-fill{
+  height:100%; border-radius:6px;
+  background:linear-gradient(90deg,#00b4d8,var(--cyan) 55%,var(--violet));
+  box-shadow:0 0 12px rgba(0,243,255,.5);
+  transition:width .35s ease; position:relative;
+}
+.gauge-ticks{position:absolute; inset:0; display:flex;}
+.gauge-ticks div{flex:1; border-right:1px solid rgba(10,10,26,.6);}
+.gauge-ticks div:last-child{border-right:none;}
+
+/* STREAMING_CHUNK:Definint el layout de barra lateral i contingut ample... */
+.layout{display:flex; max-width:1340px; margin:0 auto;}
+.sidebar{width:280px; flex-shrink:0; padding:20px 12px; border-right:1px solid var(--line); min-height:calc(100vh - 96px);}
+.sidebar-label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); padding:0 12px; margin:18px 0 8px;}
+.sidebar-label:first-child{margin-top:0;}
+.mod-item{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:8px;
+  cursor:pointer; margin-bottom:2px; color:var(--text-dim); font-size:13.5px; line-height:1.35; transition:all .12s;
+}
+.mod-item:hover{background:var(--panel);}
+.mod-item.active{background:var(--cyan-dim); color:var(--text); box-shadow:inset 3px 0 0 var(--cyan);}
+.mod-item .tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); background:var(--panel-2); padding:2px 6px; border-radius:4px; flex-shrink:0;}
+.mod-item.active .tag{color:var(--cyan); background:rgba(0,243,255,.12);}
+.mod-item.special{border-top:1px solid var(--line); margin-top:10px; padding-top:14px; border-radius:0;}
+.mod-item.special .tag{color:var(--violet); background:var(--violet-dim);}
+.mod-item.special.quiz .tag{color:var(--green); background:rgba(0,255,136,.12);}
+
+.content{flex:1; padding:30px 44px; min-width:0;}
+.eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-faint); margin-bottom:6px;}
+.content h2{font-size:26px; margin:0 0 18px;}
+.content h3{font-size:16px; margin:24px 0 10px; color:var(--text);}
+.content p{line-height:1.68; color:var(--text-dim); margin:0 0 14px;}
+.content ul,.content ol{line-height:1.68; color:var(--text-dim); padding-left:22px; margin:0 0 14px;}
+.content li{margin-bottom:6px;}
+.content strong{color:var(--text);}
+pre{
+  background:#05050f; border:1px solid rgba(0,243,255,.16); border-radius:var(--radius);
+  padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6; color:var(--green); margin:0 0 14px;
+}
+pre .cm{color:var(--text-faint);}
+pre .bad{color:var(--red);}
+.mono{font-size:.94em;}
+p .mono,li .mono,td .mono{background:var(--panel-2); padding:1px 5px; border-radius:4px; color:var(--cyan);}
+
+.panel-box{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 14px;}
+.panel-box.warn{border-left:3px solid var(--red);}
+.panel-box.tip{border-left:3px solid var(--cyan);}
+.panel-box.deepen{border-left:3px solid var(--violet);}
+.panel-box p{margin:0;}
+
+table.data{width:100%; border-collapse:collapse; font-size:13px; margin:0 0 14px;}
+table.data th{text-align:left; padding:8px 10px; background:var(--panel-2); color:var(--text-faint); font-size:11px; text-transform:uppercase; letter-spacing:.6px; font-weight:600;}
+table.data td{padding:8px 10px; border-top:1px solid var(--line); color:var(--text-dim); vertical-align:top;}
+
+.bottom-nav{display:flex; justify-content:space-between; gap:12px; margin-top:28px; padding-top:18px; border-top:1px solid var(--line);}
+.btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Inter',sans-serif;
+  padding:9px 16px; border-radius:8px; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.btn:disabled{opacity:.3; cursor:default;}
+.btn.primary{background:linear-gradient(135deg,rgba(0,243,255,.2),rgba(181,53,255,.25)); border-color:var(--cyan); color:var(--cyan);}
+.btn.primary:hover:not(:disabled){box-shadow:0 0 14px rgba(0,243,255,.35);}
+.btn.danger{border-color:var(--red); color:var(--red);}
+.btn.small{padding:6px 11px; font-size:12px;}
+
+/* STREAMING_CHUNK:Donant estil a la checklist del repte pràctic... */
+.check-item{display:flex; align-items:flex-start; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 13px; margin-bottom:7px; cursor:pointer; transition:all .12s;}
+.check-item:hover{border-color:rgba(0,243,255,.3);}
+.check-item input{margin-top:3px; accent-color:var(--cyan); flex-shrink:0;}
+.check-item span{font-size:13.5px; color:var(--text-dim); line-height:1.5;}
+.check-item.done span{color:var(--text-faint); text-decoration:line-through;}
+.progress-row{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+.progress-bar{flex:1; height:8px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+.progress-bar div{height:100%; width:0; background:linear-gradient(90deg,var(--cyan),var(--violet)); transition:width .3s ease;}
+.progress-pct{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--cyan); min-width:44px; text-align:right;}
+
+/* STREAMING_CHUNK:Preparant les finestres modals i el flux del test... */
+.overlay{position:fixed; inset:0; background:rgba(5,5,15,.82); backdrop-filter:blur(6px); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px;}
+.overlay.hidden{display:none;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; width:520px; max-width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.modal h3{margin:0 0 4px; font-size:19px;}
+.modal .sub{font-size:13px; color:var(--text-faint); margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; color:var(--text-faint); margin-bottom:5px;}
+.field input{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 12px; color:var(--text); font-size:14px; font-family:'Inter',sans-serif;}
+.field input:focus{outline:none; border-color:var(--cyan);}
+.error-msg{display:none; color:var(--red); font-size:12.5px; margin-bottom:12px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+/* STREAMING_CHUNK:Donant estil al selector de grup... */
+.grp-row{display:flex; gap:10px;}
+.grp-btn{
+  flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  color:var(--text-dim); font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600;
+  cursor:pointer; transition:all .12s;
+}
+.grp-btn:hover{border-color:rgba(0,243,255,.35);}
+.grp-btn.selected{border-color:var(--cyan); background:var(--cyan-dim); color:var(--cyan); box-shadow:0 0 12px rgba(0,243,255,.2);}
+.grp-hint{font-size:11.5px; color:var(--text-faint); margin-top:6px;}
+
+.quiz-progress{font-size:12px; color:var(--text-faint); margin-bottom:14px; letter-spacing:.4px;}
+.q-block{margin-bottom:6px;}
+.q-text{font-size:15.5px; font-weight:500; line-height:1.5; margin-bottom:16px;}
+.opt{display:flex; align-items:flex-start; gap:11px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:11px 14px; margin-bottom:8px; cursor:pointer; font-size:13.5px; color:var(--text-dim); transition:all .12s;}
+.opt:hover{border-color:rgba(0,243,255,.35);}
+.opt.selected{border-color:var(--cyan); background:var(--cyan-dim); color:var(--text);}
+.opt .letter{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-faint); background:var(--bg); border-radius:4px; padding:1px 7px; flex-shrink:0;}
+.opt.selected .letter{color:var(--cyan);}
+.result-card{text-align:center;}
+.result-score{font-family:'Space Grotesk',sans-serif; font-size:52px; font-weight:700; color:var(--cyan); text-shadow:0 0 22px rgba(0,243,255,.4); line-height:1.1; margin:6px 0;}
+.result-score.fail{color:var(--red); text-shadow:0 0 22px rgba(244,63,94,.35);}
+
+.stat-row{display:flex; gap:10px; margin-bottom:16px;}
+.stat-card{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; text-align:center;}
+.stat-card .eyebrow{margin-bottom:3px;}
+.stat-card b{font-family:'Space Grotesk',sans-serif; font-size:19px;}
+.badge{font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; border-radius:20px; display:inline-block;}
+.badge.ok{color:var(--green); background:rgba(0,255,136,.12); border:1px solid rgba(0,255,136,.3);}
+.badge.ko{color:var(--red); background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.3);}
+.toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;}
+table.tp{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.tp th{position:sticky; top:0; background:var(--panel-2); text-align:left; padding:7px 9px; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-faint);}
+table.tp td{padding:7px 9px; border-top:1px solid var(--line); color:var(--text-dim);}
+
+::-webkit-scrollbar{width:7px; height:7px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,243,255,.22); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,243,255,.5);}
+
+/* STREAMING_CHUNK:Preparant la versió imprimible dels apunts (fons blanc)... */
+#printArea{display:none;}
+
+/* STREAMING_CHUNK:Protegint els blocs de codi i les solucions... */
+pre{ -webkit-user-select:none; user-select:none; }
+body.teacher-mode pre{ -webkit-user-select:text; user-select:text; }
+pre .gap{ color:var(--amber); background:rgba(245,158,11,.12); border-radius:3px; }
+.code-label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.8px; text-transform:uppercase; margin:0 0 5px; color:var(--text-faint); }
+.code-label.forats{ color:var(--amber); }
+.code-label.sol{ color:var(--green); }
+.code-label.sol-teacher{ color:var(--violet); }
+.sol-locked{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  background:repeating-linear-gradient(135deg,rgba(181,53,255,.07) 0 12px,rgba(181,53,255,.02) 12px 24px);
+  border:1px dashed rgba(181,53,255,.45); border-radius:var(--radius); padding:16px 18px; margin:0 0 14px;
+}
+.sol-locked .sol-msg{ font-family:'Space Grotesk',sans-serif; font-size:15px; color:var(--text); }
+.sol-locked .sol-sub{ font-size:12px; color:var(--text-faint); margin-top:3px; }
+.teacher-badge{
+  display:flex; align-items:center; gap:8px; background:var(--violet-dim); border:1px solid rgba(181,53,255,.5);
+  color:#e3b8ff; border-radius:8px; padding:6px 6px 6px 12px; font-size:12.5px; font-weight:600; flex-shrink:0;
+}
+.teacher-badge.hidden{ display:none; }
+.teacher-badge button{ background:transparent; border:1px solid rgba(181,53,255,.5); color:#e3b8ff; border-radius:6px; padding:4px 9px; font-size:11.5px; cursor:pointer; font-family:'Inter',sans-serif; }
+.teacher-badge button:hover{ background:rgba(181,53,255,.25); }
+.header-actions{display:flex; gap:8px; flex-shrink:0;}
+.teacher-btn.notes:hover{border-color:var(--cyan); color:var(--cyan);}
+
+@media print{
+  @page{ size:A4; margin:16mm 14mm; }
+  html,body{ background:#fff !important; background-image:none !important; color:#1a1a2e; }
+  .topbar,.layout,.overlay{ display:none !important; }
+  #printArea{ display:block; font-family:'Inter',sans-serif; font-size:10.5pt; line-height:1.5; color:#1a1a2e; }
+  #printArea .pr-cover{ border-bottom:2px solid #0891b2; padding-bottom:8px; margin-bottom:18px; }
+  #printArea .pr-cover h1{ font-family:'Space Grotesk',sans-serif; font-size:20pt; margin:0 0 2px; color:#0f172a; }
+  #printArea .pr-cover div{ font-size:9.5pt; color:#475569; }
+  #printArea .pr-mod{ margin-bottom:16px; }
+  #printArea h2{ font-family:'Space Grotesk',sans-serif; font-size:14.5pt; color:#0e7490; margin:18px 0 8px; break-after:avoid; page-break-after:avoid; }
+  #printArea h2 .num{ color:#7c3aed; margin-right:6px; }
+  #printArea h3{ font-size:11.5pt; color:#0f172a; margin:14px 0 6px; break-after:avoid; page-break-after:avoid; }
+  #printArea p,#printArea li{ color:#1f2937; }
+  #printArea p{ margin:0 0 8px; }
+  #printArea ul,#printArea ol{ margin:0 0 8px; padding-left:20px; }
+  #printArea strong{ color:#0f172a; }
+  #printArea pre{ background:#f6f7fb; border:1px solid #cbd5e1; color:#0f3d2e; font-size:8.8pt; white-space:pre-wrap; word-break:break-word; break-inside:avoid; page-break-inside:avoid; }
+  #printArea pre .cm{ color:#64748b; }
+  #printArea pre .bad{ color:#b91c1c; }
+  #printArea .mono{ color:#0e7490; background:none !important; padding:0; }
+  #printArea .panel-box{ background:#fff; border:1px solid #cbd5e1; color:#1f2937; break-inside:avoid; page-break-inside:avoid; }
+  #printArea .panel-box.warn{ border-left:4px solid #dc2626; }
+  #printArea .panel-box.tip{ border-left:4px solid #0891b2; }
+  #printArea .panel-box.deepen{ border-left:4px solid #7c3aed; }
+  #printArea .eyebrow{ color:#64748b; }
+  #printArea table.data{ break-inside:avoid; page-break-inside:avoid; }
+  #printArea table.data th{ background:#eef2f7; color:#334155; border-bottom:1px solid #94a3b8; }
+  #printArea table.data td{ color:#1f2937; border-top:1px solid #cbd5e1; }
+  #printArea .pr-challenge{ break-before:page; page-break-before:always; }
+  #printArea .pr-task{ display:flex; gap:8px; margin-bottom:5px; color:#1f2937; }
+  #printArea .pr-task b{ font-family:'JetBrains Mono',monospace; font-weight:400; color:#0f172a; }
+  #printArea pre .gap{ color:#b45309; background:#fef3c7; }
+  #printArea .code-label{ color:#64748b; }
+  #printArea .sol-locked{ display:block; background:#faf5ff; border:1.5px dashed #7c3aed; color:#4c1d95; padding:10px 12px; break-inside:avoid; page-break-inside:avoid; }
+  #printArea .sol-locked .sol-msg{ color:#4c1d95; font-size:10.5pt; }
+  #printArea .pr-foot{ margin-top:18px; font-size:8.5pt; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:6px; }
+}
+
+@media (max-width:900px){
+  .sidebar{display:none;}
+  .content{padding:22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- STREAMING_CHUNK:Construint la capçalera amb el cicle, el mòdul i el gauge... -->
+<div class="topbar">
+  <div class="session-title-row">
+    <div class="session-title" id="sessionTitleEl"></div>
+    <div class="header-actions">
+      <div class="teacher-badge hidden" id="teacherBadge">👨‍🏫 Mode professor <button onclick="exitTeacherMode()">Sortir del mode professor</button></div>
+      <button class="teacher-btn notes" onclick="exportNotesPDF()" title="Descarrega les diapositives i el repte en PDF (sense el test)">⬇ Apunts PDF</button>
+      <button class="teacher-btn" id="teacherBtn" onclick="openTeacherGate()">🔒 Panell professor</button>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="nav-btn" id="prevBtn" onclick="goTo(currentIndex-1)">‹</button>
+    <div class="nav-mid">
+      <div class="nav-label"><b id="navLabel"></b><span id="navModTitle"></span></div>
+      <div class="gauge"><div class="gauge-fill" id="gaugeFill"><div class="gauge-ticks" id="gaugeTicks"></div></div></div>
+    </div>
+    <button class="nav-btn" id="nextBtn" onclick="goTo(currentIndex+1)">›</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- STREAMING_CHUNK:Preparant les portes d'accés al test... -->
+<div class="overlay hidden" id="quizGate">
+  <div class="modal">
+    <div id="quizGateBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="quizModal">
+  <div class="modal" style="width:640px;">
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="teacherGate">
+  <div class="modal">
+    <h3>🔒 Accés professor</h3>
+    <div class="sub">Introdueix la contrasenya del panell.</div>
+    <div class="field"><label>Contrasenya</label><input id="teacherPwdInput" type="password" onkeydown="if(event.key==='Enter')tryUnlockTeacher()"></div>
+    <div class="error-msg" id="teacherError">Contrasenya incorrecta.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeOverlay('teacherGate')">Cancel·la</button>
+      <button class="btn primary" id="teacherEnterBtn" onclick="tryUnlockTeacher()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STREAMING_CHUNK:Muntant el panell del professor... -->
+<div class="overlay hidden" id="teacherPanel">
+  <div class="modal" style="width:840px;">
+    <h3>📊 Panell del professor</h3>
+    <div class="sub" id="tpSession"></div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Test per als alumnes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpOberturaStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpOberturaBtn" onclick="toggleObertura()">···</button>
+    </div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Revisió de respostes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpRevisioStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpRevisioBtn" onclick="toggleRevisio()">···</button>
+    </div>
+
+    <div class="panel-box" id="tpSolBox" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Solucions del codi</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpSolStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpSolBtn" onclick="toggleSolucions()">···</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="eyebrow" id="tpTotalLabel">Lliuraments</div><b style="color:var(--cyan)" id="tpTotal">0</b></div>
+      <div class="stat-card"><div class="eyebrow">Nota mitjana</div><b style="color:var(--violet)" id="tpAvg">0.0</b></div>
+      <div class="stat-card"><div class="eyebrow">% aprovats</div><b style="color:var(--green)" id="tpPass">0%</b></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn small" id="tpGroupBtn" onclick="toggleGroupFilter()">Tots els grups</button>
+      <button class="btn small" id="tpFilterBtn" onclick="toggleFilter()">Només aquest test</button>
+      <button class="btn small" id="tpViewBtn" onclick="toggleViewMode()">Mitjanes per alumne</button>
+      <label style="font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <input type="checkbox" id="tpAuto" checked onchange="toggleAutoRefresh()" style="accent-color:var(--cyan)"> Auto-refresc 10s
+      </label>
+      <button class="btn small" onclick="loadTeacherData(true)">🔄 Actualitzar</button>
+      <button class="btn small" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn small danger" onclick="resetLocalAttempt()" title="Permet tornar a fer el test en AQUEST ordinador">↺ Reiniciar intent local</button>
+    </div>
+
+    <div id="tpTableWrap" style="max-height:44vh; overflow:auto; border:1px solid var(--line); border-radius:10px;"></div>
+    <div style="font-size:11px; color:var(--text-faint); margin-top:8px;" id="tpStatus"></div>
+
+    <div class="modal-actions">
+      <button class="btn danger" onclick="exitTeacherMode()" style="margin-right:auto;">Sortir del mode professor</button>
+      <button class="btn" onclick="closeOverlay('teacherPanel'); stopAutoRefresh();">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STREAMING_CHUNK:Reservant el contenidor dels apunts imprimibles... -->
+<div id="printArea"></div>
+
+<script>
+/* =========================================================================
+   STREAMING_CHUNK:Definint la configuració de la sessió...
+   Per generar una sessió nova només cal reomplir SESSION, MODULES,
+   CHALLENGE i TEST. El MOTOR de més avall no s'ha de tocar.
+
+   Blocs de codi dins de MODULES (convenció del .md):
+     ```csharp          → <pre>codi</pre>                        (visible)
+     ```csharp forats   → <pre class="code-forats">codi amb ________</pre>  (visible, buits ressaltats)
+     ```csharp solucio  → <pre class="code-sol" data-sol="sol1"></pre>      (BUIT: el codi és a l'Apps Script, fitxer Sol_SNN.gs)
+   Els identificadors sol1, sol2... són correlatius dins de cada sessió.
+   ========================================================================= */
+const SESSION = {
+  name: "S03: InputSystem. Moviment del Player",
+  subtitle: "CFGS Animació 2D/3D i Videojocs · Mòdul 1091 · Sessió 3",
+  sheetUrl: "https://script.google.com/macros/s/AKfycbz5ShozbYKrwWAn6aug8tFkUohkJ0-7MXrCmYCPBUzFhVa4MRR2_itonuR9CEsg4SDw/exec",   // implementació v2 de l'Apps Script
+  passMark: 5.0,
+  autoRefreshMs: 10000
+};
+
+const MODULES = [
+  {
+    title: "Missió del dia",
+    body: `
+      <p>El UFO ja és al taulell i els pickups giren... però el UFO no es mou. Avui <strong>el fem volar</strong> 🛸</p>
+      <p>I no el mourem d'una manera sola, sinó de <strong>tres</strong>. Cada una arregla un problema de l'anterior, i al final el UFO xocarà amb les parets i fins i tot hi rebotarà.</p>
+      <h3>🎯 Objectius</h3>
+      <ul>
+        <li>Entendre com funciona el <strong>nou Input System</strong> de Unity 6 (accions i tecles).</li>
+        <li>Llegir el teclat i el comandament des d'un script amb <strong>Send Messages</strong>.</li>
+        <li>Posar <strong>límits</strong> al taulell amb colliders i un <strong>Rigidbody 2D</strong>.</li>
+        <li>Descobrir per què <span class="mono">transform.Translate</span> i les <strong>físiques</strong> no es porten bé.</li>
+        <li>Moure el UFO amb <span class="mono">linearVelocity</span> i amb <span class="mono">AddForce</span>, i saber per a què serveix <span class="mono">FixedUpdate()</span>.</li>
+        <li>Fer que el UFO <strong>reboti</strong> amb un material físic.</li>
+      </ul>
+    `
+  },
+  {
+    title: "Input System: accions, no tecles",
+    body: `
+      <p>Unity 6 fa servir el <strong>nou Input System</strong>. L'antic (<span class="mono">Input.GetAxis</span>, <span class="mono">Input.GetKey</span>...) està <em>obsolet</em>: si el copies d'un tutorial vell, et pot donar errors.</p>
+      <p>La idea clau és que <strong>el codi no sap res de tecles</strong>. El codi només coneix <strong>accions</strong>: "moure's", "atacar", "saltar"... Les tecles s'assignen a les accions en un fitxer a part.</p>
+      <table class="data">
+        <thead><tr><th>Concepte</th><th>Què és</th><th>Exemple</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Action</strong></td><td>El <em>què</em> vull fer</td><td><span class="mono">Move</span></td></tr>
+          <tr><td><strong>Binding</strong></td><td>El <em>com</em> ho faig</td><td>W, A, S, D, fletxes, joystick del comandament</td></tr>
+          <tr><td><strong>Action Map</strong></td><td>Un grup d'accions</td><td><span class="mono">Player</span> (jugar), <span class="mono">UI</span> (menús)</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box deepen">
+        <div class="eyebrow">Analogia 🎮</div>
+        <p>És com els controls configurables d'un joc. L'acció "saltar" sempre és la mateixa; tu decideixes si és l'espai o el botó A.</p>
+      </div>
+      <h3>📂 El fitxer <span class="mono">InputSystem_Actions</span></h3>
+      <p>Ja el tens creat a la carpeta <span class="mono">Assets</span>. Fes-hi <strong>doble clic</strong> i mira l'Action Map <span class="mono">Player</span> → acció <span class="mono">Move</span>. Ja porta configurat:</p>
+      <ul>
+        <li><strong>WASD / fletxes</strong>: un <em>composite</em> Up/Down/Left/Right que converteix 4 tecles en una direcció.</li>
+        <li><strong>Left Stick</strong> del comandament.</li>
+        <li>Altres dispositius (joystick, XR) que de moment pots ignorar.</li>
+      </ul>
+      <h3>↗️ <span class="mono">Move</span> et dona un <span class="mono">Vector2</span></h3>
+      <p>Un <span class="mono">Vector2</span> són dos números: <strong>(x, y)</strong>.</p>
+      <table class="data">
+        <thead><tr><th>Prems</th><th>Valor que rep el codi</th></tr></thead>
+        <tbody>
+          <tr><td>Res</td><td><span class="mono">(0, 0)</span></td></tr>
+          <tr><td>D</td><td><span class="mono">(1, 0)</span></td></tr>
+          <tr><td>A</td><td><span class="mono">(-1, 0)</span></td></tr>
+          <tr><td>W</td><td><span class="mono">(0, 1)</span></td></tr>
+          <tr><td>W + D</td><td><span class="mono">(0.71, 0.71)</span></td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Truc 😉</div>
+        <p>En diagonal no val (1, 1), sinó (0.71, 0.71). El vector està <strong>normalitzat</strong>, i gràcies a això el UFO no va més ràpid en diagonal.</p>
+      </div>
+    `
+  },
+  {
+    title: "Player Input + Send Messages",
+    body: `
+      <p>Perquè el UFO escolti les accions, li afegim un component:</p>
+      <ol>
+        <li>Selecciona el UFO → <strong>Add Component → Player Input</strong>.</li>
+        <li><strong>Actions</strong>: arrossega-hi <span class="mono">InputSystem_Actions</span>.</li>
+        <li><strong>Default Map</strong>: <span class="mono">Player</span>.</li>
+        <li><strong>Behavior</strong>: <span class="mono">Send Messages</span>.</li>
+      </ol>
+      <div class="panel-box tip">
+        <div class="eyebrow">📬 Send Messages</div>
+        <p>Vol dir que el component <strong>envia un missatge</strong> al teu script cada vegada que canvia una acció. Just a sota del Behavior hi veuràs la llista de missatges que enviarà: <span class="mono">OnMove</span>, <span class="mono">OnAttack</span>, <span class="mono">OnJump</span>... <strong>És la teva xuleta</strong> per escriure els noms.</p>
+      </div>
+      <h3>El primer <span class="mono">ScrPlayer</span></h3>
+      <p>Crea l'script <span class="mono">ScrPlayer</span> a <span class="mono">_Project/Scripts/</span> (recorda: escriu el nom <strong>abans</strong> de prémer Enter) i afegeix-lo al UFO.</p>
+      <pre class="code-sol" data-sol="sol1"></pre>
+      <p>Fixa't que tenim <strong>dos mètodes amb feines diferents</strong>: <span class="mono">OnMove</span> <strong>escolta</strong> i guarda la direcció, i <span class="mono">Update</span> <strong>mou</strong>.</p>
+      <div class="panel-box warn">
+        <div class="eyebrow">⚠️ Trampes típiques</div>
+        <ul>
+          <li><strong>Nom exacte:</strong> <span class="mono">OnMove</span>, no <span class="mono">onMove</span> ni <span class="mono">OnMovement</span>. Si el nom està malament, <strong>no dona cap error</strong>: simplement no passa res.</li>
+          <li><strong>Mateix GameObject:</strong> l'script ha d'estar al mateix objecte que el <span class="mono">Player Input</span>.</li>
+          <li><strong>El <span class="mono">using</span>:</strong> si <span class="mono">InputValue</span> surt subratllat en vermell, posa-t'hi a sobre i prem <strong>Ctrl + .</strong> a Visual Studio.</li>
+        </ul>
+      </div>
+    `
+  },
+  {
+    title: "Posant límits al taulell",
+    body: `
+      <p>Ara el UFO vola... i <strong>surt del taulell</strong> 😅. Necessitem parets.</p>
+      <h3>🧱 El taulell: Edge Collider 2D</h3>
+      <p>Primera idea: un <strong>Box Collider 2D</strong> al taulell. Prova-ho... 💥 <strong>el UFO surt disparat!</strong> Un Box Collider és un bloc <strong>sòlid</strong>, i el UFO és a dins, així que les físiques l'expulsen.</p>
+      <p>La solució és un <strong>Edge Collider 2D</strong>: una <strong>línia</strong> (no un bloc) que fa de paret.</p>
+      <ul>
+        <li>Clica <strong>Edit Collider</strong> i arrossega els punts per dibuixar un rectangle a la <strong>vora interior</strong> de les parets, on comença el terra clar.</li>
+        <li>Una Edge no es tanca sola. Per fer un rectangle calen <strong>5 punts</strong>, amb l'últim a sobre del primer.</li>
+        <li><strong>No</strong> marquis Is Trigger: volem que bloquegi.</li>
+      </ul>
+      <h3>🛸 El UFO: Circle Collider 2D + Rigidbody 2D</h3>
+      <ul>
+        <li><strong>Circle Collider 2D</strong>, perquè el UFO és rodó.</li>
+        <li><strong>Rigidbody 2D</strong>: és el component que diu <em>"aquest objecte obeeix les lleis de la física"</em>.</li>
+        <li><strong>Gravity Scale = 0</strong>. Mirem el taulell des de dalt: sense això, el UFO cauria cap avall de la pantalla 🪂.</li>
+      </ul>
+      <table class="data">
+        <thead><tr><th>Objecte</th><th>Collider</th><th>Rigidbody 2D</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Taulell</strong></td><td>Edge Collider 2D</td><td>❌ <strong>Cap</strong></td></tr>
+          <tr><td><strong>UFO</strong></td><td>Circle Collider 2D</td><td>✅ Dynamic · Gravity 0</td></tr>
+          <tr><td><strong>Pickups</strong></td><td>Circle Collider 2D (Is Trigger ✅)</td><td>❌ Cap</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>Si poses un Rigidbody 2D (Dynamic) al taulell, <strong>el UFO l'empenyerà</strong> i el taulell sortirà volant. Les parets no es mouen: no els cal Rigidbody.</p>
+      </div>
+    `
+  },
+  {
+    title: "El problema: Translate vs físiques",
+    body: `
+      <p>Fes Play i empeny el UFO contra una paret... <strong>tremola</strong> 🫨</p>
+      <h3>Per què?</h3>
+      <p><span class="mono">transform.Translate</span> <strong>teletransporta</strong> el UFO: a cada fotograma el col·loca directament a la posició nova, sense preguntar si hi ha res al mig.</p>
+      <ol>
+        <li><span class="mono">Translate</span> fica el UFO <strong>dins</strong> la paret.</li>
+        <li>La física diu <em>"ep, aquí no hi pots ser!"</em> i el treu cap enfora.</li>
+        <li>Al fotograma següent, <span class="mono">Translate</span> el torna a ficar a dins...</li>
+      </ol>
+      <p>Resultat: una baralla entre el teu codi i la física, que es veu com un tremolor.</p>
+      <h3>🧪 Experiment: el fantasma</h3>
+      <p>Puja la <span class="mono">velocitat</span> a <strong>50</strong> a l'Inspector (en Play) i empeny contra la paret. <strong>La travessa!</strong> 👻 Si el salt d'un fotograma al següent és més gran que la paret, Unity ni tan sols veu el xoc.</p>
+      <div class="panel-box warn">
+        <div class="eyebrow">Regla d'or</div>
+        <p>Si un objecte té <strong>Rigidbody</strong>, el mou <strong>la física</strong>, no el Transform.</p>
+      </div>
+    `
+  },
+  {
+    title: "Moure amb física: linearVelocity",
+    body: `
+      <p>En comptes de teletransportar el UFO, li direm <strong>a quina velocitat ha d'anar</strong>, i la física s'encarregarà de moure'l i de fer-lo xocar.</p>
+      <pre class="code-sol" data-sol="sol2"></pre>
+      <div class="panel-box deepen">
+        <div class="eyebrow">🧱 OOP</div>
+        <p><span class="mono">rb</span> és una <strong>referència</strong> a un altre objecte, el component Rigidbody 2D. Amb <span class="mono">GetComponent</span> el demanem al GameObject, i a partir d'aquí li podem donar ordres: <span class="mono">rb.linearVelocity = ...</span></p>
+      </div>
+      <h3>⏱️ Update() vs FixedUpdate()</h3>
+      <table class="data">
+        <thead><tr><th>Mètode</th><th>Quan s'executa</th><th>Per a què</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">Update()</span></td><td>A cada fotograma (depèn de l'ordinador: 30, 60, 200 FPS...)</td><td>Lògica, animacions, moure Transforms</td></tr>
+          <tr><td><span class="mono">FixedUpdate()</span></td><td>A intervals <strong>fixos</strong> (per defecte 50 vegades per segon)</td><td><strong>Tot el que toca físiques</strong> (Rigidbody)</td></tr>
+        </tbody>
+      </table>
+      <p>La física de Unity funciona amb el seu propi rellotge. <span class="mono">FixedUpdate()</span> s'executa <strong>al ritme de la física</strong>, i per això és el lloc per donar-li ordres.</p>
+      <div class="panel-box warn">
+        <div class="eyebrow">⚠️ Sense Time.deltaTime!</div>
+        <p><span class="mono">linearVelocity</span> ja es mesura en <strong>unitats per segon</strong>. Si la multipliques per <span class="mono">Time.deltaTime</span>, el UFO anirà a pas de tortuga 🐢.</p>
+      </div>
+      <table class="data">
+        <thead><tr><th>Moviment</th><th>Porta Time.deltaTime?</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">transform.Translate</span> / <span class="mono">Rotate</span> a <span class="mono">Update()</span></td><td>✅ Sí</td></tr>
+          <tr><td><span class="mono">rb.linearVelocity</span> a <span class="mono">FixedUpdate()</span></td><td>❌ No</td></tr>
+        </tbody>
+      </table>
+      <p>Ara empeny contra la paret: <strong>ni tremola ni la travessa</strong> 🎉</p>
+      <h3>📛 Noms nous a Unity 6</h3>
+      <p>Als tutorials antics (i a vegades a les respostes de la IA!) hi trobaràs noms que ja han canviat:</p>
+      <table class="data">
+        <thead><tr><th>Abans</th><th>Unity 6</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">velocity</span></td><td><span class="mono">linearVelocity</span></td></tr>
+          <tr><td><span class="mono">drag</span></td><td><span class="mono">linearDamping</span></td></tr>
+          <tr><td><span class="mono">angularDrag</span></td><td><span class="mono">angularDamping</span></td></tr>
+        </tbody>
+      </table>
+    `
+  },
+  {
+    title: "Una altra manera: AddForce",
+    body: `
+      <p>Amb <span class="mono">linearVelocity</span> el UFO respon a l'instant: prems i va, deixes anar i s'atura en sec. Molt precís, però <strong>poc "nau espacial"</strong>.</p>
+      <p>Amb <span class="mono">AddForce</span> <strong>empenyem</strong> el UFO, com un motor. Accelera de mica en mica i té <strong>inèrcia</strong>.</p>
+      <pre class="code-sol" data-sol="sol3"></pre>
+      <p>Prova-ho... 🧊 <strong>El UFO no s'atura mai!</strong> Sembla que llisqui sobre gel. A l'espai no hi ha res que el freni.</p>
+      <h3>🪂 Linear Damping: el fre</h3>
+      <p>Al Rigidbody 2D, <strong>Linear Damping</strong> és una mena de fregament amb l'aire que va frenant el UFO a poc a poc.</p>
+      <table class="data">
+        <thead><tr><th>Linear Damping</th><th>Sensació</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">0</span></td><td>Gel / espai: no s'atura mai</td></tr>
+          <tr><td><span class="mono">1 – 3</span></td><td>Nau àgil amb inèrcia ✅</td></tr>
+          <tr><td><span class="mono">10+</span></td><td>Com moure's dins de mel 🍯</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Valors per començar</div>
+        <p><strong>Empenta ≈ 15</strong> i <strong>Linear Damping ≈ 2</strong>. Juga amb tots dos fins que la nau et sembli divertida de controlar.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">Recorda</div>
+        <p><span class="mono">AddForce</span> va <strong>sempre a <span class="mono">FixedUpdate()</span></strong>. A <span class="mono">Update()</span>, un ordinador amb més FPS empenyeria més vegades per segon i la nau aniria més ràpid.</p>
+      </div>
+      <table class="data">
+        <thead><tr><th></th><th>linearVelocity</th><th>AddForce</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Resposta</strong></td><td>Instantània</td><td>Progressiva (inèrcia)</td></tr>
+          <tr><td><strong>S'atura sol?</strong></td><td>Sí, en deixar anar</td><td>Només amb Linear Damping</td></tr>
+          <tr><td><strong>Ideal per a</strong></td><td>Personatges precisos, plataformes</td><td>Naus, vehicles, boles</td></tr>
+        </tbody>
+      </table>
+    `
+  },
+  {
+    title: "Rebotar amb les parets",
+    body: `
+      <h3>🏀 Physics Material 2D</h3>
+      <ol>
+        <li>Project → botó dret → <strong>Create → 2D → Physics Material 2D</strong>. Anomena'l <span class="mono">PM_Rebot</span>.</li>
+        <li><strong>Bounciness = 1</strong> (rebot total) i <strong>Friction = 0</strong>.</li>
+        <li>Arrossega'l al camp <strong>Material</strong> del Circle Collider 2D del UFO.</li>
+      </ol>
+      <p>Ara el UFO <strong>rebota</strong> amb les parets 🎱</p>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte</div>
+        <p>Si fas servir <span class="mono">linearVelocity</span>, <strong>no veuràs el rebot</strong>. A cada <span class="mono">FixedUpdate()</span> tornes a fixar la velocitat i el rebot desapareix. El rebot només es nota amb <span class="mono">AddForce</span>.</p>
+      </div>
+      <h3>🌀 Angular Damping: el UFO fa voltes</h3>
+      <p>Si el material té fricció, en fregar la paret el UFO es posa a <strong>girar</strong>. Tens dues opcions:</p>
+      <ul>
+        <li><strong>Angular Damping</strong> (Rigidbody 2D): frena el gir de mica en mica.</li>
+        <li><strong>Constraints → Freeze Rotation Z</strong>: el UFO no gira mai.</li>
+      </ul>
+      <h3>👻 Collision Detection: Continuous</h3>
+      <p>Recordes el UFO fantasma? Amb una empenta molt gran i rebots, <strong>una Edge tan prima es pot travessar</strong>.</p>
+      <table class="data">
+        <thead><tr><th>Mode</th><th>Com funciona</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Discrete</strong> (per defecte)</td><td>Mira on és el UFO a cada pas de física. Si entre dos passos ja és a l'altra banda, no veu el xoc.</td></tr>
+          <tr><td><strong>Continuous</strong></td><td>Calcula <strong>tot el camí</strong> entre dos passos. No se li escapa cap paret.</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box tip">
+        <div class="eyebrow">Fes-ho</div>
+        <p>Posa <strong>Collision Detection → Continuous</strong> al Rigidbody 2D del UFO. Costa una mica més de càlcul, i per això només es fa servir en objectes ràpids.</p>
+      </div>
+    `
+  },
+  {
+    title: "Resum de la sessió",
+    body: `
+      <div class="panel-box tip">
+        <div class="eyebrow">5 idees per endur-te</div>
+        <p style="margin-bottom:8px;"><strong>1.</strong> 🎮 <strong>Input System:</strong> el codi coneix <strong>accions</strong> (<span class="mono">Move</span>); les tecles es configuren a part. Amb <strong>Send Messages</strong>, el mètode es diu <span class="mono">On</span> + nom de l'acció.</p>
+        <p style="margin-bottom:8px;"><strong>2.</strong> 🧱 <strong>Límits:</strong> Edge Collider 2D al taulell, Circle Collider 2D + Rigidbody 2D (Gravity 0) al UFO.</p>
+        <p style="margin-bottom:8px;"><strong>3.</strong> 👻 <strong>Translate teletransporta:</strong> si hi ha Rigidbody, el mou la física, o tindràs tremolors i parets travessades.</p>
+        <p style="margin-bottom:8px;"><strong>4.</strong> ⏱️ <strong>Físiques a <span class="mono">FixedUpdate()</span></strong>, i <span class="mono">linearVelocity</span> <strong>sense</strong> <span class="mono">Time.deltaTime</span>.</p>
+        <p><strong>5.</strong> 🚀 <span class="mono">linearVelocity</span> = precís · <span class="mono">AddForce</span> + <strong>Linear Damping</strong> = inèrcia · <strong>Physics Material 2D</strong> = rebot.</p>
+      </div>
+    `
+  }
+];
+
+/* Repte pràctic: tasques obligatòries (checklist amb progrés) + reptes opcionals */
+const CHALLENGE = {
+  intro: "Fes volar el UFO pel taulell sense que se n’escapi. Primer amb Translate (i descobreix el problema), després amb física de veritat. Acaba amb una nau que accelera, frena i rebota. Marca cada pas a mesura que el completis.",
+  tasks: [
+    "Afegeix al UFO el component <strong>Player Input</strong> amb <span class='mono'>InputSystem_Actions</span>, Default Map <span class='mono'>Player</span> i Behavior <strong>Send Messages</strong>.",
+    "Crea l’script <span class='mono'>ScrPlayer</span> a <span class='mono'>_Project/Scripts/</span> i fes moure el UFO amb <span class='mono'>OnMove</span> i <span class='mono'>transform.Translate</span>.",
+    "Afegeix un <strong>Edge Collider 2D</strong> al taulell i ajusta’n els punts a la vora interior de les parets (rectangle tancat).",
+    "Afegeix al UFO un <strong>Circle Collider 2D</strong> i un <strong>Rigidbody 2D</strong> amb <strong>Gravity Scale = 0</strong>.",
+    "Comprova el <strong>tremolor</strong> contra la paret i fes l’experiment del <strong>fantasma</strong> amb velocitat 50.",
+    "Canvia el moviment a <span class='mono'>rb.linearVelocity</span> dins de <span class='mono'>FixedUpdate()</span> (sense <span class='mono'>Time.deltaTime</span>) i comprova que ja no tremola.",
+    "Canvia el moviment a <span class='mono'>rb.AddForce</span> i ajusta <strong>Empenta</strong> i <strong>Linear Damping</strong> fins que la nau sigui agradable de controlar.",
+    "Crea el material <span class='mono'>PM_Rebot</span> (Bounciness 1, Friction 0), posa’l al collider del UFO i fes-lo rebotar.",
+    "Posa <strong>Collision Detection → Continuous</strong> al Rigidbody 2D del UFO.",
+    "Fes <strong>check-in</strong> a Unity Version Control amb un comentari clar i sense errors a la Console."
+  ],
+  optional: [
+    "<strong>Turbo 🔥:</strong> afegeix un <span class='mono'>[SerializeField] float multiplicadorTurbo</span> i fes que, mentre es prem l’acció <span class='mono'>Sprint</span> (Shift), la nau vagi més ràpid. <em>Pista:</em> <span class='mono'>void OnSprint(InputValue value)</span> i <span class='mono'>value.isPressed</span>. <em>Pista extra:</em> perquè també t’avisi quan <strong>deixes anar</strong> la tecla, a l’acció Sprint afegeix-hi la Interaction <strong>Press</strong> amb el mode <strong>Press And Release</strong>.",
+    "<strong>Tecles pròpies ⌨️:</strong> afegeix a l’acció <span class='mono'>Move</span> un nou binding amb <strong>IJKL</strong> des de l’editor, sense tocar el codi. Funciona igualment?",
+    "<strong>Dos modes en un 🔀:</strong> afegeix un <span class='mono'>[SerializeField] bool usarForces</span> i fes que el mateix script mogui el UFO amb <span class='mono'>linearVelocity</span> o amb <span class='mono'>AddForce</span> segons aquesta casella.",
+    "<strong>Física per al matemàtic 🧮:</strong> amb <span class='mono'>AddForce</span>, la velocitat màxima és aproximadament <span class='mono'>empenta / (massa × linearDamping)</span>. Mostra <span class='mono'>rb.linearVelocity.magnitude</span> amb <span class='mono'>Debug.Log</span> i comprova-ho."
+  ]
+};
+
+/* 10 preguntes · opcions A-D · l'opció E (NS/NC) l'afegeix el motor */
+const TEST = {
+  name: "Test - Unity 2D Sessió 3",
+  questions: [
+    { q:"Amb Player Input en mode Send Messages, quin mètode rep l’acció Move?", opts:["Move()","onMove(InputValue value)","OnMove(InputValue value)","Update(InputValue value)"], correct:2 },
+    { q:"Només prems la tecla D. Quin Vector2 rep el codi?", opts:["(1, 0)","(0, 1)","(-1, 0)","(1, 1)"], correct:0 },
+    { q:"Poses un Box Collider 2D al taulell i el UFO és a dins. Què passa en fer Play?", opts:["El UFO queda perfectament limitat pel taulell","El UFO és expulsat, perquè el Box Collider és un bloc sòlid","El taulell desapareix","No passa res, perquè el taulell no té script"], correct:1 },
+    { q:"Per què posem Gravity Scale = 0 al Rigidbody 2D del UFO?", opts:["Perquè vagi més ràpid","Perquè pugui travessar les parets","Perquè sense Rigidbody no es pot moure","Perquè mirem el taulell des de dalt i no volem que el UFO “caigui” cap avall de la pantalla"], correct:3 },
+    { q:"El UFO té Rigidbody 2D però el mous amb transform.Translate. Què passa contra una paret?", opts:["Tremola i, a molta velocitat, la pot travessar, perquè Translate el teletransporta","Rebota perfectament","S’atura suaument","Unity mostra un error i atura el joc"], correct:0 },
+    { q:"On has de posar rb.linearVelocity = direccio * velocitat; ?", opts:["A Start()","A FixedUpdate()","A OnMove(), només","Fora de la classe"], correct:1 },
+    { q:"Escrius rb.linearVelocity = direccio * velocitat * Time.deltaTime; Què passarà?", opts:["El UFO anirà igual a tots els ordinadors, perfecte","El UFO anirà molt més ràpid","El UFO anirà molt lent, perquè linearVelocity ja són unitats per segon","Unity donarà un error de compilació"], correct:2 },
+    { q:"Mous el UFO amb AddForce, deixes anar les tecles i el UFO continua lliscant sense parar. Què et falta?", opts:["Posar Gravity Scale a 1","Treure el Circle Collider 2D","Canviar a Collision Detection Discrete","Pujar el Linear Damping del Rigidbody 2D"], correct:3 },
+    { q:"Tens el material PM_Rebot (Bounciness 1) al UFO, però el mous amb linearVelocity i no rebota. Per què?", opts:["Perquè a cada FixedUpdate() fixes la velocitat i el rebot se sobreescriu","Perquè el material només funciona en 3D","Perquè cal marcar Is Trigger","Perquè el taulell necessita un Rigidbody 2D Dynamic"], correct:0 },
+    { q:"(Sessió 2) Els pickups tenen un Circle Collider 2D amb Is Trigger activat. Què passa quan el UFO hi passa per sobre?", opts:["El UFO xoca i rebota","El pickup s’esborra automàticament","El UFO hi passa per sobre sense xocar, i Unity avisa que l’ha tocat","El UFO s’atura en sec"], correct:2 }
+  ]
+};
+
+/* =========================================================================
+   STREAMING_CHUNK:Iniciant el MOTOR (no cal tocar res a partir d'aquí)...
+   ========================================================================= */
+const OPEN_KEY = TEST.name + " · OBERTURA";
+const REVIEW_KEY = TEST.name;
+const SOL_KEY = TEST.name + " · SOLUCIONS";
+
+/* Mode professor: dura mentre la pestanya estigui oberta (sessionStorage).
+   La contrasenya NO és a l'HTML: la valida l'Apps Script. */
+const TEACHER_KEY = 'unity2d_teacher_pwd';
+let teacherPwd = null;           // contrasenya validada (només en mode professor)
+let teacherMode = false;
+const HAS_SOLUTIONS = MODULES.some(function(m){ return /data-sol=/.test(m.body); });
+let solCodes = {};               // { sol1: "codi...", ... } rebut del servidor
+let solUnlocked = false;         // desbloquejades per als alumnes?
+let solChecked = false;          // ja s'ha consultat el servidor?
+
+const STORAGE_KEY = 'unity2d_attempt_' + TEST.name;
+
+/* Grups de classe: l'ID que s'envia al full és la lletra del grup + el número (p. ex. A24).
+   Franges de divendres (hora local del navegador) en què el grup es preselecciona sol.
+   L'alumne sempre el pot canviar. Fora d'aquestes franges no es preselecciona cap grup. */
+const GROUPS = ['A','B'];
+const GROUP_SLOTS = [
+  { day:5, from:'09:00', to:'11:00', group:'B' },
+  { day:5, from:'11:30', to:'13:30', group:'A' }
+];
+
+let currentIndex = 0;
+let currentView = 'module';
+let studentInfo = null;
+let quizQuestions = [], quizAnswers = [], currentQuestionIdx = 0;
+let quizSent = false;
+let lastAttempt = null;   // intent ja realitzat en aquest navegador
+let selectedGroup = null; // grup triat al formulari d'identificació
+
+/* ---------- PERSISTÈNCIA DE L'INTENT ---------- */
+function saveAttempt(attempt){
+  lastAttempt = attempt;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(attempt)); } catch(e){}
+}
+
+function loadAttempt(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const a = JSON.parse(raw);
+    if(!a || !Array.isArray(a.order) || !Array.isArray(a.answers)) return null;
+    if(a.order.length !== TEST.questions.length) return null;   // el test ha canviat: intent no vàlid
+    return a;
+  } catch(e){ return null; }
+}
+
+function clearAttempt(){
+  lastAttempt = null;
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+}
+
+// Reconstrueix les preguntes i respostes de l'intent desat, per poder-ne veure la revisió
+function restoreAttempt(a){
+  quizQuestions = a.order.map(function(idx){ return TEST.questions[idx]; });
+  quizAnswers = a.answers.slice();
+  studentInfo = a.student;
+  quizSent = true;
+}
+let checkedTasks = [];
+let teacherRows = [], filterOnlyThis = true, viewMode = 'submissions', autoTimer = null;
+let groupFilter = 'ALL';   // 'ALL' · 'A' · 'B'
+let oberturaUnlocked = false, revisioUnlocked = false;
+
+function esc(v){
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function closeOverlay(id){ document.getElementById(id).classList.add('hidden'); }
+function openOverlay(id){ document.getElementById(id).classList.remove('hidden'); }
+
+/* ---------- GRUPS ---------- */
+function toMinutes(hhmm){
+  const p = hhmm.split(':');
+  return parseInt(p[0],10) * 60 + parseInt(p[1],10);
+}
+
+// Retorna el grup que toca segons el dia i l'hora actuals, o null si no n'hi ha cap
+function suggestGroup(){
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  for(let i = 0; i < GROUP_SLOTS.length; i++){
+    const s = GROUP_SLOTS[i];
+    if(now.getDay() === s.day && mins >= toMinutes(s.from) && mins < toMinutes(s.to)) return s.group;
+  }
+  return null;
+}
+
+// Extreu la lletra de grup d'un ID del full ("A24" → "A"); null si l'ID no en porta
+function groupOfId(id){
+  const m = String(id === null || id === undefined ? '' : id).trim().toUpperCase().match(/^([A-Z])/);
+  return (m && GROUPS.indexOf(m[1]) > -1) ? m[1] : null;
+}
+
+/* ---------- NAVEGACIÓ ---------- */
+function buildGaugeTicks(){
+  document.getElementById('gaugeTicks').innerHTML = MODULES.map(function(){ return '<div></div>'; }).join('');
+}
+
+function buildSidebar(){
+  const sb = document.getElementById('sidebar');
+  let html = '<div class="sidebar-label">Diapositives</div>';
+  MODULES.forEach(function(m,i){
+    html += '<div class="mod-item' + (currentView==='module' && i===currentIndex ? ' active' : '') + '" onclick="goTo(' + i + ')">'
+          + '<span class="tag">' + String(i+1).padStart(2,'0') + '</span><span>' + esc(m.title) + '</span></div>';
+  });
+  html += '<div class="sidebar-label">Avaluació</div>'
+        + '<div class="mod-item special quiz' + (currentView==='quiz'?' active':'') + '" onclick="openQuizGate()"><span class="tag">TEST</span><span>Fer el test</span></div>'
+        + '<div class="mod-item special' + (currentView==='challenge'?' active':'') + '" onclick="goToChallenges()"><span class="tag">✦</span><span>Repte pràctic</span></div>';
+  sb.innerHTML = html;
+}
+
+function updateGauge(){
+  const pct = ((currentIndex+1)/MODULES.length)*100;
+  document.getElementById('gaugeFill').style.width = pct + '%';
+  document.getElementById('navLabel').textContent = 'Diapositiva ' + (currentIndex+1) + ' de ' + MODULES.length;
+  document.getElementById('navModTitle').textContent = MODULES[currentIndex].title;
+  document.getElementById('prevBtn').disabled = (currentIndex === 0);
+  document.getElementById('nextBtn').disabled = (currentIndex === MODULES.length-1);
+}
+
+function renderModule(i){
+  const m = MODULES[i];
+  document.getElementById('content').innerHTML =
+    '<div class="eyebrow">Diapositiva ' + (i+1) + ' de ' + MODULES.length + '</div>'
+    + '<h2>' + esc(m.title) + '</h2>'
+    + renderBody(m.body, 'screen')
+    + '<div class="bottom-nav">'
+    + '<button class="btn" onclick="goTo(' + (i-1) + ')"' + (i===0?' disabled':'') + '>‹ Anterior</button>'
+    + (i===MODULES.length-1
+        ? '<button class="btn primary" onclick="goToChallenges()">Anar al repte pràctic ›</button>'
+        : '<button class="btn primary" onclick="goTo(' + (i+1) + ')">Següent ›</button>')
+    + '</div>';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function goTo(i){
+  if(i < 0 || i >= MODULES.length) return;
+  currentIndex = i;
+  currentView = 'module';
+  renderModule(i);
+  buildSidebar();
+  updateGauge();
+}
+
+document.addEventListener('keydown', function(e){
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if(tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const anyOverlay = ['quizGate','quizModal','teacherGate','teacherPanel']
+    .some(function(id){ return !document.getElementById(id).classList.contains('hidden'); });
+  if(anyOverlay){
+    if(e.key === 'Escape'){ ['quizGate','quizModal','teacherGate','teacherPanel'].forEach(closeOverlay); }
+    return;
+  }
+  if(currentView !== 'module') return;
+  if(e.key === 'ArrowRight') goTo(currentIndex+1);
+  if(e.key === 'ArrowLeft') goTo(currentIndex-1);
+});
+
+/* ---------- REPTE PRÀCTIC ----------
+   Si una sessió no té repte (CHALLENGE.tasks buit, p. ex. la sessió diagnòstica),
+   es mostra una pantalla informativa en comptes de la checklist, per evitar un "NaN%". */
+function goToChallenges(){
+  currentView = 'challenge';
+
+  if(CHALLENGE.tasks.length === 0){
+    document.getElementById('content').innerHTML =
+      '<div class="eyebrow">Avaluació</div><h2>Repte pràctic</h2>'
+      + (CHALLENGE.intro ? '<p>' + CHALLENGE.intro + '</p>' : '')
+      + '<div class="panel-box tip"><div class="eyebrow">Sense repte avui</div><p>No hi ha cap tasca ni cap repte opcional en aquesta sessió. Podeu anar directament al test.</p></div>'
+      + '<div class="bottom-nav"><button class="btn" onclick="goTo(currentIndex)">‹ Tornar a les diapositives</button>'
+      + '<button class="btn primary" onclick="openQuizGate()">Fer el test ›</button></div>';
+    buildSidebar();
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+  if(checkedTasks.length !== CHALLENGE.tasks.length) checkedTasks = CHALLENGE.tasks.map(function(){ return false; });
+
+  let html = '<div class="eyebrow">Pràctica de la sessió</div><h2>Repte pràctic</h2>'
+    + '<p>' + CHALLENGE.intro + '</p>'
+    + '<div class="progress-row"><div class="progress-bar"><div id="challengeBar"></div></div><div class="progress-pct" id="challengePct">0%</div></div>';
+
+  CHALLENGE.tasks.forEach(function(t,i){
+    html += '<label class="check-item' + (checkedTasks[i]?' done':'') + '" id="task' + i + '">'
+          + '<input type="checkbox" onchange="toggleTask(' + i + ')"' + (checkedTasks[i]?' checked':'') + '>'
+          + '<span>' + t + '</span></label>';
+  });
+
+  if(CHALLENGE.optional.length){
+    html += '<h3 style="margin-top:30px;">Reptes opcionals · no puntuables</h3>'
+          + '<p>Per a qui vulgui anar més enllà del contingut mínim. No compten per a la nota.</p>';
+    CHALLENGE.optional.forEach(function(r,i){
+      html += '<div class="panel-box deepen"><div class="eyebrow">Repte ' + (i+1) + '</div><p>' + r + '</p></div>';
+    });
+  }
+
+  html += '<div class="bottom-nav"><button class="btn" onclick="goTo(currentIndex)">‹ Tornar a les diapositives</button>'
+        + '<button class="btn primary" onclick="openQuizGate()">Fer el test ›</button></div>';
+
+  document.getElementById('content').innerHTML = html;
+  buildSidebar();
+  updateChallengeProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function toggleTask(i){
+  checkedTasks[i] = !checkedTasks[i];
+  document.getElementById('task'+i).classList.toggle('done', checkedTasks[i]);
+  updateChallengeProgress();
+}
+
+function updateChallengeProgress(){
+  if(CHALLENGE.tasks.length === 0) return;
+  const done = checkedTasks.filter(Boolean).length;
+  const pct = Math.round((done / CHALLENGE.tasks.length) * 100);
+  const bar = document.getElementById('challengeBar');
+  if(bar){ bar.style.width = pct + '%'; document.getElementById('challengePct').textContent = pct + '%'; }
+}
+
+/* ---------- ACCÉS AL TEST ---------- */
+function openQuizGate(){
+  // Si aquest navegador ja té un intent fet, anem directament al resultat
+  if(lastAttempt){
+    restoreAttempt(lastAttempt);
+    currentView = 'quiz';
+    buildSidebar();
+    openOverlay('quizModal');
+    renderResult(lastAttempt.result, true);
+    return;
+  }
+
+  openOverlay('quizGate');
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>Comprovant...</h3><div class="sub">Consultant si el professor ha obert el test.</div>';
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderQuizForm();
+      else renderQuizLocked("El professor encara no ha obert el test.");
+    })
+    .catch(function(){
+      renderQuizLocked("No s'ha pogut comprovar l'estat del test. Revisa la connexió.");
+    });
+}
+
+function renderQuizLocked(msg){
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>🔒 Test bloquejat</h3>'
+    + '<div class="sub">' + esc(msg) + '</div>'
+    + '<div class="panel-box"><p style="font-size:13px; color:var(--text-faint);">Quan el professor l’activi des del seu panell, torna a prémer "Comprovar de nou".</p></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Tancar</button>'
+    + '<button class="btn primary" onclick="openQuizGate()">Comprovar de nou</button></div>';
+}
+
+function renderQuizForm(){
+  selectedGroup = suggestGroup();
+  const grpButtons = GROUPS.map(function(g){
+    return '<button type="button" class="grp-btn' + (selectedGroup === g ? ' selected' : '') + '" id="grpBtn' + g + '" onclick="selectGroup(\'' + g + '\')">Grup ' + g + '</button>';
+  }).join('');
+
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>✅ Test obert</h3>'
+    + '<div class="sub">Identifica’t abans de començar. Tens ' + TEST.questions.length + ' preguntes.</div>'
+    + '<div class="field"><label>Grup</label><div class="grp-row">' + grpButtons + '</div>'
+    + '<div class="grp-hint">' + (selectedGroup ? 'Preseleccionat segons l’horari de classe. Si no és el teu, canvia’l.' : 'Tria el teu grup.') + '</div></div>'
+    + '<div class="field"><label>Número d’alumne</label><input id="gateId" inputmode="numeric" placeholder="p. ex. 24"></div>'
+    + '<div class="field"><label>Nom i cognoms</label><input id="gateName" placeholder="El teu nom"></div>'
+    + '<div class="error-msg" id="gateError"></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Cancel·la</button>'
+    + '<button class="btn primary" onclick="startQuizFromGate()">Començar el test</button></div>';
+}
+
+function selectGroup(g){
+  selectedGroup = g;
+  GROUPS.forEach(function(x){
+    document.getElementById('grpBtn' + x).classList.toggle('selected', x === g);
+  });
+}
+
+function showGateError(msg){
+  const el = document.getElementById('gateError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function startQuizFromGate(){
+  const num = document.getElementById('gateId').value.replace(/\s+/g, '');
+  const name = document.getElementById('gateName').value.trim();
+  if(!selectedGroup){ showGateError("Tria el teu grup (A o B)."); return; }
+  if(!/^\d+$/.test(num)){ showGateError("El número d’alumne només pot tenir xifres (p. ex. 24)."); return; }
+  if(!name){ showGateError("Cal escriure el nom i cognoms."); return; }
+  // L'ID que arriba al full porta el grup davant: A24, B8...
+  studentInfo = { id: selectedGroup + String(parseInt(num, 10)), name: name };
+  closeOverlay('quizGate');
+  startQuiz();
+}
+
+/* ---------- FLUX DEL TEST ---------- */
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length-1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function startQuiz(){
+  quizQuestions = shuffleArray(TEST.questions);
+  quizAnswers = new Array(quizQuestions.length).fill(null);
+  currentQuestionIdx = 0;
+  quizSent = false;
+  currentView = 'quiz';
+  buildSidebar();
+  openOverlay('quizModal');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const q = quizQuestions[currentQuestionIdx];
+  const letters = ['A','B','C','D'];
+  let optsHtml = q.opts.map(function(o, idx){
+    return '<div class="opt' + (quizAnswers[currentQuestionIdx]===idx?' selected':'') + '" onclick="selectAnswer(' + idx + ')">'
+         + '<span class="letter">' + letters[idx] + '</span><span>' + esc(o) + '</span></div>';
+  }).join('');
+  optsHtml += '<div class="opt' + (quizAnswers[currentQuestionIdx]===4?' selected':'') + '" onclick="selectAnswer(4)">'
+            + '<span class="letter">E</span><span>NS/NC (no ho sé / no contesto)</span></div>';
+
+  const answered = quizAnswers.filter(function(a){ return a !== null; }).length;
+
+  document.getElementById('quizBody').innerHTML =
+    '<div class="quiz-progress">Pregunta ' + (currentQuestionIdx+1) + ' de ' + quizQuestions.length
+      + ' &nbsp;·&nbsp; respostes: ' + answered + '/' + quizQuestions.length + '</div>'
+    + '<div class="q-block"><div class="q-text">' + esc(q.q) + '</div>' + optsHtml + '</div>'
+    + '<div class="modal-actions" id="quizActions">'
+    + '<button class="btn small" onclick="askExitQuiz()" style="margin-right:auto;">✕ Sortir</button>'
+    + '<button class="btn" onclick="quizPrev()"' + (currentQuestionIdx===0?' disabled':'') + '>‹ Anterior</button>'
+    + (currentQuestionIdx === quizQuestions.length-1
+        ? '<button class="btn primary" onclick="finishQuiz()">Finalitzar</button>'
+        : '<button class="btn primary" onclick="quizNext()">Següent ›</button>')
+    + '</div>';
+}
+
+function askExitQuiz(){
+  document.getElementById('quizActions').innerHTML =
+    '<span style="margin-right:auto; font-size:12.5px; color:var(--red);">Si surts ara perdràs les respostes.</span>'
+    + '<button class="btn" onclick="renderQuizQuestion()">Continuar el test</button>'
+    + '<button class="btn danger" onclick="exitQuiz()">Sortir igualment</button>';
+}
+
+function exitQuiz(){
+  closeOverlay('quizModal');
+  quizQuestions = []; quizAnswers = []; currentQuestionIdx = 0; studentInfo = null;
+  currentView = 'module';
+  buildSidebar();
+}
+
+function selectAnswer(idx){ quizAnswers[currentQuestionIdx] = idx; renderQuizQuestion(); }
+function quizNext(){ if(currentQuestionIdx < quizQuestions.length-1){ currentQuestionIdx++; renderQuizQuestion(); } }
+function quizPrev(){ if(currentQuestionIdx > 0){ currentQuestionIdx--; renderQuizQuestion(); } }
+
+function finishQuiz(){
+  if(quizSent) return;
+  quizSent = true;
+
+  let correct = 0, wrong = 0, blank = 0;
+  quizQuestions.forEach(function(q, i){
+    const a = quizAnswers[i];
+    if(a === null || a === 4) blank++;
+    else if(a === q.correct) correct++;
+    else wrong++;
+  });
+
+  // Encert +1 · Error -0.333 · NS/NC 0 · normalitzat sobre 10
+  const raw = (correct * 1) - (wrong * (1/3));
+  const grade = Math.round(Math.max(0, raw / quizQuestions.length * 10) * 100) / 100;
+  const result = { correct: correct, wrong: wrong, blank: blank, grade: grade, total: quizQuestions.length };
+
+  // Desem l'intent perquè, si torna a entrar, vagi directe al resultat
+  saveAttempt({
+    student: studentInfo,
+    order: quizQuestions.map(function(q){ return TEST.questions.indexOf(q); }),
+    answers: quizAnswers.slice(),
+    result: result,
+    date: new Date().toISOString()
+  });
+
+  renderResult(result, false);
+  sendResultToSheet({ correct: correct, grade: grade, total: result.total });
+}
+
+function renderResult(res, restored){
+  document.getElementById('quizBody').innerHTML =
+    '<div class="result-card">'
+    + '<div class="eyebrow">' + (restored ? 'Test ja realitzat' : 'Resultat') + '</div>'
+    + '<div class="result-score' + (res.grade < SESSION.passMark ? ' fail' : '') + '">' + res.grade.toFixed(2) + '</div>'
+    + '<p style="color:var(--text-faint); font-size:13px;">sobre 10</p>'
+    + '<p>Encerts: <strong>' + res.correct + '</strong> · Errors: <strong>' + res.wrong + '</strong> · NS/NC: <strong>' + res.blank + '</strong> · Total: ' + res.total + '</p>'
+    + '<div id="sendStatus" style="font-size:13px; color:var(--text-faint); margin-top:10px;">'
+      + (restored ? 'Ja vas enviar aquest resultat. Només pots fer el test una vegada.' : 'Enviant resultat...') + '</div>'
+    + '<button class="btn" onclick="checkRevisioStudent()" style="margin-top:16px;">🔍 Comprovar si la revisió ja està disponible</button>'
+    + '<div id="revisioCheckStatus" style="font-size:13px; color:var(--text-faint); margin-top:8px;"></div>'
+    + '<div id="reviewWrap"></div>'
+    + '<div class="modal-actions"><button class="btn primary" onclick="closeQuizResult()" style="margin:16px auto 0;">Tancar</button></div>'
+    + '</div>';
+}
+
+function closeQuizResult(){
+  closeOverlay('quizModal');
+  currentView = 'module';
+  buildSidebar();
+}
+
+function sendResultToSheet(res){
+  const payload = {
+    studentId: studentInfo.id,
+    studentName: studentInfo.name,
+    topic: TEST.name,
+    score: res.correct,
+    grade: res.grade,
+    totalQuestions: res.total
+  };
+  // Sense fixar Content-Type: en mode no-cors només s'admet text/plain, i
+  // l'Apps Script llegeix igualment el JSON cru a e.postData.contents.
+  fetch(SESSION.sheetUrl, { method:'POST', mode:'no-cors', body: JSON.stringify(payload) })
+    .then(function(){
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = '✓ Resultat enviat correctament.';
+    })
+    .catch(function(err){
+      console.error('Error enviant a Sheets:', err);
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = "⚠ No s'ha pogut enviar. Avisa el professor.";
+    });
+}
+
+/* ---------- REVISIÓ DE L'ALUMNE ---------- */
+function checkRevisioStudent(){
+  const status = document.getElementById('revisioCheckStatus');
+  status.textContent = 'Comprovant...';
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderStudentReview();
+      else status.textContent = "Encara no disponible. El professor l'activarà quan tothom hagi acabat.";
+    })
+    .catch(function(){ status.textContent = "No s'ha pogut comprovar (revisa la connexió)."; });
+}
+
+function renderStudentReview(){
+  const letters = ['A','B','C','D'];
+  const answerText = function(q, idx){ return idx === 4 ? 'NS/NC' : (letters[idx] + '. ' + esc(q.opts[idx])); };
+  let html = '<div style="margin-top:18px; text-align:left;">';
+  quizQuestions.forEach(function(q, i){
+    const given = quizAnswers[i];
+    const isCorrect = given === q.correct;
+    html += '<div class="panel-box" style="border-left:3px solid ' + (isCorrect ? 'var(--green)' : 'var(--red)') + ';">'
+          + '<div style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">' + (isCorrect ? '✓ Correcta' : '✗ Incorrecta') + '</div>'
+          + '<div style="font-weight:500; margin-bottom:6px; font-size:13.5px;">' + esc(q.q) + '</div>'
+          + '<div style="font-size:13px; color:var(--text-dim);">La teva resposta: ' + answerText(q, given === null ? 4 : given) + '</div>'
+          + (!isCorrect ? '<div style="font-size:13px; color:var(--green);">Resposta correcta: ' + answerText(q, q.correct) + '</div>' : '')
+          + '</div>';
+  });
+  html += '</div>';
+  document.getElementById('reviewWrap').innerHTML = html;
+  document.getElementById('revisioCheckStatus').textContent = '';
+}
+
+/* ---------- PANELL DEL PROFESSOR ---------- */
+function openTeacherGate(){
+  // En mode professor el panell s'obre sense tornar a demanar la contrasenya
+  if(teacherMode){ openTeacherPanel(); return; }
+  document.getElementById('teacherError').style.display = 'none';
+  document.getElementById('teacherPwdInput').value = '';
+  openOverlay('teacherGate');
+  setTimeout(function(){ document.getElementById('teacherPwdInput').focus(); }, 60);
+}
+
+function showTeacherError(msg){
+  const el = document.getElementById('teacherError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// La contrasenya la valida l'Apps Script (action=login)
+function tryUnlockTeacher(){
+  const pwd = document.getElementById('teacherPwdInput').value.trim();
+  if(!pwd){ showTeacherError('Escriu la contrasenya.'); return; }
+  const btn = document.getElementById('teacherEnterBtn');
+  btn.disabled = true; btn.textContent = 'Comprovant...';
+  fetch(SESSION.sheetUrl + '?action=login&password=' + encodeURIComponent(pwd))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.status === 'success'){
+        enterTeacherMode(pwd);
+        closeOverlay('teacherGate');
+        openTeacherPanel();
+      } else {
+        showTeacherError((json && json.message) || 'Contrasenya incorrecta.');
+      }
+    })
+    .catch(function(){ showTeacherError("No s'ha pogut connectar amb el servidor."); })
+    .then(function(){ btn.disabled = false; btn.textContent = 'Entrar'; });
+}
+
+function enterTeacherMode(pwd){
+  teacherPwd = pwd;
+  teacherMode = true;
+  try { sessionStorage.setItem(TEACHER_KEY, pwd); } catch(e){}
+  updateTeacherModeUI();
+  loadSolutions();   // el professor veu sempre les solucions
+}
+
+function exitTeacherMode(){
+  teacherPwd = null;
+  teacherMode = false;
+  try { sessionStorage.removeItem(TEACHER_KEY); } catch(e){}
+  stopAutoRefresh();
+  closeOverlay('teacherPanel');
+  solCodes = {}; solUnlocked = false; solChecked = false;
+  updateTeacherModeUI();
+  refreshCurrentView();
+  loadSolutions();   // tornem a consultar com a alumne
+}
+
+function updateTeacherModeUI(){
+  document.body.classList.toggle('teacher-mode', teacherMode);
+  document.getElementById('teacherBadge').classList.toggle('hidden', !teacherMode);
+  document.getElementById('teacherBtn').textContent = teacherMode ? '📊 Panell professor' : '🔒 Panell professor';
+}
+
+function openTeacherPanel(){
+  openOverlay('teacherPanel');
+  document.getElementById('tpSession').textContent = SESSION.name + ' · ' + TEST.name;
+  document.getElementById('tpSolBox').style.display = HAS_SOLUTIONS ? 'flex' : 'none';
+  loadStates();
+  loadTeacherData(false);
+  startAutoRefresh();
+}
+
+function loadStates(){
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ oberturaUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpOberturaStatus').textContent = "No s'ha pogut consultar l'estat."; });
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ revisioUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpRevisioStatus').textContent = "No s'ha pogut consultar l'estat."; });
+
+  if(HAS_SOLUTIONS){
+    fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(SOL_KEY))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ solUnlocked = !!(j && j.unlocked); updateStateUI(); })
+      .catch(function(){ document.getElementById('tpSolStatus').textContent = "No s'ha pogut consultar l'estat."; });
+  }
+}
+
+function updateStateUI(){
+  document.getElementById('tpOberturaStatus').textContent = oberturaUnlocked
+    ? 'Obert: els alumnes ja poden fer el test.'
+    : 'Tancat: els alumnes no poden accedir al test.';
+  const ob = document.getElementById('tpOberturaBtn');
+  ob.textContent = oberturaUnlocked ? 'Tancar el test' : 'Obrir el test';
+  ob.className = 'btn' + (oberturaUnlocked ? ' danger' : ' primary');
+
+  document.getElementById('tpRevisioStatus').textContent = revisioUnlocked
+    ? 'Activada: els alumnes poden veure quines han fallat.'
+    : 'Desactivada: els alumnes encara no veuen les correccions.';
+  const rb = document.getElementById('tpRevisioBtn');
+  rb.textContent = revisioUnlocked ? 'Desactivar' : 'Activar';
+  rb.className = 'btn' + (revisioUnlocked ? ' danger' : '');
+
+  const n = countSolutionBlocks();
+  const nTxt = n === 1 ? '1 bloc' : n + ' blocs';
+  document.getElementById('tpSolStatus').textContent = solUnlocked
+    ? 'Desbloquejades: els alumnes ja veuen el codi (' + nTxt + ').'
+    : 'Bloquejades: els alumnes no veuen el codi (' + nTxt + '). Tu sí, en mode professor.';
+  const sb = document.getElementById('tpSolBtn');
+  sb.textContent = solUnlocked ? 'Bloquejar' : 'Desbloquejar';
+  sb.className = 'btn' + (solUnlocked ? ' danger' : '');
+}
+
+function setFlag(key, value, statusElId, callback){
+  const url = SESSION.sheetUrl + '?action=setRevisio&password=' + encodeURIComponent(teacherPwd || '')
+            + '&test=' + encodeURIComponent(key) + '&value=' + value;
+  document.getElementById(statusElId).textContent = 'actualitzant...';
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.status === 'success') callback(json.unlocked);
+      else document.getElementById(statusElId).textContent = (json && json.message) || 'Error del servidor.';
+    })
+    .catch(function(){ document.getElementById(statusElId).textContent = "No s'ha pogut actualitzar."; });
+}
+
+function toggleObertura(){
+  setFlag(OPEN_KEY, !oberturaUnlocked, 'tpOberturaStatus', function(v){ oberturaUnlocked = v; updateStateUI(); });
+}
+function toggleRevisio(){
+  setFlag(REVIEW_KEY, !revisioUnlocked, 'tpRevisioStatus', function(v){ revisioUnlocked = v; updateStateUI(); });
+}
+function toggleSolucions(){
+  setFlag(SOL_KEY, !solUnlocked, 'tpSolStatus', function(v){ solUnlocked = v; updateStateUI(); });
+}
+
+/* ---------- RESULTATS ---------- */
+function loadTeacherData(feedback){
+  const st = document.getElementById('tpStatus');
+  st.textContent = 'Consultant el full de càlcul...';
+  fetch(SESSION.sheetUrl + '?password=' + encodeURIComponent(teacherPwd || ''))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(!json || json.status !== 'success' || !Array.isArray(json.data)){
+        st.textContent = (json && json.message) ? json.message : 'Resposta inesperada del servidor.';
+        return;
+      }
+      // Ordre de columnes del full: A Data · B ID · C Nom · D Tema · E Encerts · F Nota · G Total
+      teacherRows = json.data.map(function(row){
+        const v = Object.keys(row).map(function(k){ return row[k]; });
+        return { date:v[0], id:v[1], name:v[2], topic:v[3], score:v[4], grade:parseFloat(v[5]) || 0, total:v[6] };
+      });
+      renderTeacherTable();
+      st.textContent = 'Actualitzat: ' + new Date().toLocaleTimeString('ca-ES');
+    })
+    .catch(function(err){
+      console.error(err);
+      st.textContent = "No s'ha pogut llegir el full (revisa el desplegament de l'Apps Script).";
+    });
+}
+
+function visibleRows(){
+  return teacherRows.filter(function(r){
+    if(filterOnlyThis && String(r.topic).trim() !== TEST.name) return false;
+    if(groupFilter !== 'ALL' && groupOfId(r.id) !== groupFilter) return false;
+    return true;
+  });
+}
+
+function toggleFilter(){
+  filterOnlyThis = !filterOnlyThis;
+  document.getElementById('tpFilterBtn').textContent = filterOnlyThis ? 'Només aquest test' : 'Tots els resultats';
+  renderTeacherTable();
+}
+
+// Tots els grups → Grup A → Grup B → Tots els grups
+function toggleGroupFilter(){
+  const cycle = ['ALL'].concat(GROUPS);
+  groupFilter = cycle[(cycle.indexOf(groupFilter) + 1) % cycle.length];
+  const btn = document.getElementById('tpGroupBtn');
+  btn.textContent = (groupFilter === 'ALL') ? 'Tots els grups' : ('Grup ' + groupFilter);
+  btn.className = 'btn small' + (groupFilter === 'ALL' ? '' : ' primary');
+  renderTeacherTable();
+}
+
+function toggleViewMode(){
+  viewMode = (viewMode === 'submissions') ? 'students' : 'submissions';
+  document.getElementById('tpViewBtn').textContent = (viewMode === 'students') ? 'Veure lliuraments' : 'Mitjanes per alumne';
+  document.getElementById('tpTotalLabel').textContent = (viewMode === 'students') ? 'Alumnes' : 'Lliuraments';
+  renderTeacherTable();
+}
+
+function groupByStudent(rows){
+  const map = {};
+  rows.forEach(function(r){
+    const id = String(r.id).trim().toUpperCase();
+    if(!map[id]) map[id] = { id:id, name:r.name, grades:[] };
+    map[id].name = r.name || map[id].name;
+    map[id].grades.push(r.grade);
+  });
+  return Object.keys(map).map(function(id){
+    const e = map[id];
+    const sum = e.grades.reduce(function(a,b){ return a+b; }, 0);
+    return { id:e.id, name:e.name, count:e.grades.length, avg:sum/e.grades.length,
+             best:Math.max.apply(null, e.grades), worst:Math.min.apply(null, e.grades) };
+  }).sort(function(a,b){ return b.avg - a.avg; });
+}
+
+function renderTeacherTable(){
+  const wrap = document.getElementById('tpTableWrap');
+  const rows = visibleRows();
+
+  if(!rows.length){
+    wrap.innerHTML = '<p style="color:var(--text-faint); padding:16px; margin:0;">No hi ha resultats per a aquest filtre.</p>';
+    document.getElementById('tpTotal').textContent = '0';
+    document.getElementById('tpAvg').textContent = '0.0';
+    document.getElementById('tpPass').textContent = '0%';
+    return;
+  }
+
+  const badge = function(g){ return '<span class="badge ' + (g >= SESSION.passMark ? 'ok' : 'ko') + '">' + g.toFixed(2) + '</span>'; };
+
+  if(viewMode === 'students'){
+    const grouped = groupByStudent(rows);
+    let html = '<table class="tp"><thead><tr><th>ID</th><th>Alumne</th><th>Tests</th><th>Mitjana</th><th>Millor / Pitjor</th></tr></thead><tbody>';
+    grouped.forEach(function(s){
+      html += '<tr><td class="mono">' + esc(s.id) + '</td><td>' + esc(s.name) + '</td><td class="mono">' + s.count + '</td>'
+            + '<td>' + badge(s.avg) + '</td><td class="mono" style="font-size:11px;">' + s.best.toFixed(2) + ' / ' + s.worst.toFixed(2) + '</td></tr>';
+    });
+    wrap.innerHTML = html + '</tbody></table>';
+
+    const avg = grouped.reduce(function(a,s){ return a + s.avg; }, 0) / grouped.length;
+    const pass = grouped.filter(function(s){ return s.avg >= SESSION.passMark; }).length;
+    document.getElementById('tpTotal').textContent = grouped.length;
+    document.getElementById('tpAvg').textContent = avg.toFixed(1);
+    document.getElementById('tpPass').textContent = Math.round(pass/grouped.length*100) + '%';
+    return;
+  }
+
+  let html = '<table class="tp"><thead><tr><th>Hora</th><th>ID</th><th>Alumne</th><th>Encerts</th><th>Nota</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(function(r){
+    const d = String(r.date);
+    const hora = d.indexOf('T') > -1 ? d.substring(11,19) : (d.indexOf(' ') > -1 ? d.split(' ')[1] : d);
+    html += '<tr><td class="mono" style="font-size:11px;">' + esc(hora) + '</td><td class="mono">' + esc(r.id) + '</td>'
+          + '<td>' + esc(r.name) + '</td><td class="mono">' + esc(r.score) + ' / ' + esc(r.total) + '</td>'
+          + '<td>' + badge(r.grade) + '</td></tr>';
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+
+  const sum = rows.reduce(function(a,r){ return a + r.grade; }, 0);
+  const pass = rows.filter(function(r){ return r.grade >= SESSION.passMark; }).length;
+  document.getElementById('tpTotal').textContent = rows.length;
+  document.getElementById('tpAvg').textContent = (sum/rows.length).toFixed(1);
+  document.getElementById('tpPass').textContent = Math.round(pass/rows.length*100) + '%';
+}
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  if(document.getElementById('tpAuto').checked){
+    autoTimer = setInterval(function(){ loadTeacherData(false); }, SESSION.autoRefreshMs);
+  }
+}
+function stopAutoRefresh(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+function toggleAutoRefresh(){ if(document.getElementById('tpAuto').checked) startAutoRefresh(); else stopAutoRefresh(); }
+
+function exportCSV(){
+  const rows = visibleRows();
+  if(!rows.length) return;
+  let header, lines, suffix;
+
+  if(viewMode === 'students'){
+    header = 'ID;Nom;Tests;Mitjana;Millor;Pitjor';
+    lines = groupByStudent(rows).map(function(s){
+      return [s.id, s.name, s.count, s.avg.toFixed(2), s.best.toFixed(2), s.worst.toFixed(2)].join(';');
+    });
+    suffix = 'Mitjanes';
+  } else {
+    header = 'Data;ID;Nom;Tema;Encerts;Nota;Total';
+    lines = rows.map(function(r){
+      return [r.date, r.id, r.name, r.topic, r.score, r.grade.toFixed(2), r.total].join(';');
+    });
+    suffix = 'Lliuraments';
+  }
+
+  const blob = new Blob(['﻿' + header + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Unity2D_' + (filterOnlyThis ? 'AquestTest' : 'TotElCurs') + '_'
+             + (groupFilter === 'ALL' ? 'TotsGrups' : ('Grup' + groupFilter)) + '_' + suffix + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetLocalAttempt(){
+  clearAttempt();
+  quizQuestions = []; quizAnswers = []; studentInfo = null; quizSent = false;
+  document.getElementById('tpStatus').textContent = "Intent esborrat: en aquest ordinador es pot tornar a fer el test.";
+}
+
+/* ---------- BLOCS DE CODI I SOLUCIONS ----------
+   Les solucions (pre.code-sol[data-sol]) no són a l'HTML: es demanen a l'Apps Script
+   (action=getSolucions), que només les retorna si l'interruptor SOLUCIONS està activat
+   o si s'envia la contrasenya del professor. */
+function countSolutionBlocks(){
+  return MODULES.reduce(function(n, m){ return n + (m.body.match(/data-sol=/g) || []).length; }, 0);
+}
+
+// Ressaltat mínim del codi que arriba del servidor: comentaris // en gris i buits en àmbar
+function highlightCode(code){
+  return esc(code).split('\n').map(function(line){
+    const i = line.indexOf('//');
+    return i > -1 ? line.substring(0, i) + '<span class="cm">' + line.substring(i) + '</span>' : line;
+  }).join('\n');
+}
+
+// Transforma el cos d'una diapositiva segons les marques dels blocs de codi.
+// mode: 'screen' (pantalla) o 'print' (apunts PDF)
+function renderBody(html, mode){
+  if(html.indexOf('code-sol') === -1 && html.indexOf('code-forats') === -1) return html;
+  const box = document.createElement('div');
+  box.innerHTML = html;
+
+  box.querySelectorAll('pre.code-forats').forEach(function(pre){
+    pre.innerHTML = pre.innerHTML.replace(/_{3,}/g, function(g){ return '<span class="gap">' + g + '</span>'; });
+    pre.insertAdjacentHTML('beforebegin', '<div class="code-label forats">✏️ Completa els buits</div>');
+  });
+
+  box.querySelectorAll('pre.code-sol').forEach(function(pre){
+    const id = pre.getAttribute('data-sol');
+    const code = solCodes[id];
+    if(typeof code === 'string'){
+      const label = (teacherMode && !solUnlocked)
+        ? '<div class="code-label sol-teacher">👨‍🏫 Solució · només la veus tu (bloquejada per als alumnes)</div>'
+        : '<div class="code-label sol">✅ Solució</div>';
+      pre.innerHTML = highlightCode(code);
+      pre.insertAdjacentHTML('beforebegin', label);
+      return;
+    }
+    let lock;
+    if(mode === 'print'){
+      lock = '<div class="sol-locked"><div class="sol-msg">🔒 Solució no disponible quan vas descarregar aquests apunts.</div>'
+           + '<div class="sol-sub">Torna a descarregar-los quan el professor desbloquegi les solucions.</div></div>';
+    } else if(teacherMode){
+      lock = '<div class="sol-locked"><div><div class="sol-msg">⚠️ No s’ha trobat aquesta solució al servidor</div>'
+           + '<div class="sol-sub">Revisa que el fitxer Sol_ de l’Apps Script tingui la clau «' + esc(id) + '» i el nom del test «' + esc(TEST.name) + '».</div></div></div>';
+    } else {
+      lock = '<div class="sol-locked"><div><div class="sol-msg">🔒 La solució es desbloqueja al final de la classe</div>'
+           + '<div class="sol-sub">' + (solChecked ? 'Primer intenta-ho tu. El professor l’activarà quan toqui.' : 'Comprovant...') + '</div></div>'
+           + '<button class="btn small" onclick="loadSolutions(true)">Comprovar de nou</button></div>';
+    }
+    pre.outerHTML = lock;
+  });
+  return box.innerHTML;
+}
+
+function loadSolutions(feedback){
+  if(!HAS_SOLUTIONS) return;
+  let url = SESSION.sheetUrl + '?action=getSolucions&test=' + encodeURIComponent(TEST.name);
+  if(teacherMode && teacherPwd) url += '&password=' + encodeURIComponent(teacherPwd);
+  if(feedback) document.querySelectorAll('.sol-locked .sol-sub').forEach(function(el){ el.textContent = 'Comprovant...'; });
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      solChecked = true;
+      if(json && json.status === 'success'){
+        solUnlocked = !!json.unlocked;
+        solCodes = (json.codes && typeof json.codes === 'object') ? json.codes : {};
+      } else if(teacherMode){
+        // La contrasenya desada ja no és vàlida (p. ex. s'ha canviat): sortim del mode professor
+        exitTeacherMode();
+        return;
+      }
+      refreshCurrentView();
+    })
+    .catch(function(){
+      solChecked = true;
+      refreshCurrentView();
+      document.querySelectorAll('.sol-locked .sol-sub').forEach(function(el){ el.textContent = "No s'ha pogut comprovar (revisa la connexió)."; });
+    });
+}
+
+// Torna a pintar la diapositiva activa i els apunts amb l'estat actual de les solucions
+function refreshCurrentView(){
+  if(currentView === 'module' || currentView === 'quiz'){
+    const y = window.scrollY;
+    renderModule(currentIndex);
+    window.scrollTo(0, y);
+  }
+  buildPrintArea();
+}
+
+// Codi no copiable (fre, no pany): sense selecció, ni copiar, ni retallar, ni menú contextual.
+// En mode professor es pot copiar.
+['copy','cut','contextmenu','dragstart'].forEach(function(evt){
+  document.addEventListener(evt, function(e){
+    if(teacherMode) return;
+    const t = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+    const sel = window.getSelection ? String(window.getSelection()) : '';
+    const inCode = t && t.closest && t.closest('pre, .sol-locked');
+    const selInCode = sel && Array.prototype.some.call(document.querySelectorAll('#content pre'), function(p){
+      const s = window.getSelection();
+      return s.rangeCount && s.getRangeAt(0).intersectsNode(p);
+    });
+    if(inCode || selInCode) e.preventDefault();
+  });
+});
+
+/* ---------- APUNTS EN PDF (sense el test) ---------- */
+// Es construeix una versió de fons blanc amb totes les diapositives i el repte.
+// També s'aplica si l'alumne fa Ctrl+P directament.
+function buildPrintArea(){
+  let html = '<div class="pr-cover"><h1>' + esc(SESSION.name) + '</h1><div>' + esc(SESSION.subtitle) + ' · Apunts de classe</div></div>';
+  MODULES.forEach(function(m, i){
+    html += '<section class="pr-mod"><h2><span class="num">' + String(i+1).padStart(2,'0') + '</span>' + esc(m.title) + '</h2>' + renderBody(m.body, 'print') + '</section>';
+  });
+  if(CHALLENGE.tasks.length || CHALLENGE.optional.length){   // sessions sense repte: no s'imprimeix la secció
+    html += '<section class="pr-challenge"><h2>Repte pràctic</h2><p>' + CHALLENGE.intro + '</p>';
+    CHALLENGE.tasks.forEach(function(t){
+      html += '<div class="pr-task"><b>☐</b><span>' + t + '</span></div>';
+    });
+    if(CHALLENGE.optional.length){
+      html += '<h3>Reptes opcionals · no puntuables</h3>';
+      CHALLENGE.optional.forEach(function(r, i){
+        html += '<div class="panel-box deepen"><div class="eyebrow">Repte ' + (i+1) + '</div><p>' + r + '</p></div>';
+      });
+    }
+    html += '</section>';
+  }
+  html += '<div class="pr-foot">' + esc(SESSION.subtitle) + '</div>';
+  document.getElementById('printArea').innerHTML = html;
+}
+
+function exportNotesPDF(){
+  buildPrintArea();
+  const originalTitle = document.title;
+  document.title = 'Apunts - ' + SESSION.subtitle.split('·').pop().trim() + ' - ' + SESSION.name;  // nom suggerit del PDF
+  window.print();
+  setTimeout(function(){ document.title = originalTitle; }, 1000);
+}
+
+// Ctrl+P també ha de sortir amb l'estat actual de les solucions
+window.addEventListener('beforeprint', buildPrintArea);
+
+/* ---------- INICIALITZACIÓ ---------- */
+lastAttempt = loadAttempt();
+try { teacherPwd = sessionStorage.getItem(TEACHER_KEY); } catch(e){ teacherPwd = null; }
+teacherMode = !!teacherPwd;   // si la contrasenya ja no és vàlida, loadSolutions en sortirà
+updateTeacherModeUI();
+document.getElementById('sessionTitleEl').innerHTML = esc(SESSION.name) + '<span>· ' + esc(SESSION.subtitle) + '</span>';
+buildGaugeTicks();
+buildSidebar();
+renderModule(0);
+updateGauge();
+buildPrintArea();
+if(teacherMode && !HAS_SOLUTIONS){
+  // Sessió sense solucions: comprovem igualment que la contrasenya desada encara és vàlida
+  fetch(SESSION.sheetUrl + '?action=login&password=' + encodeURIComponent(teacherPwd))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if(!j || j.status !== 'success') exitTeacherMode(); })
+    .catch(function(){});
+}
+loadSolutions();
+</script>
+</body>
+</html>
