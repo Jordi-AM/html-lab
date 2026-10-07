@@ -12,3 +12,5 @@ URL: https://jordi-am.github.io/html-lab/Unity/
 ### Sessions ###
 - 01_Unity2D_Sessio0_Diagnostic.html
 - 02_Sessio02_1stproject_Cloud.html
+- 03_InputSystem_Moviment.html
+- 04_Pickups_So_HUD
