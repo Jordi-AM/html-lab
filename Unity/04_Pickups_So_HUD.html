@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity 2D · Sessió 4 — Pickups, so i HUD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* STREAMING_CHUNK:Definint la paleta i les variables base... */
+:root{
+  --bg:#0a0a1a;
+  --panel:#12122b;
+  --panel-2:#1b1b3a;
+  --line:rgba(255,255,255,0.09);
+  --text:#F1F5FF;
+  --text-dim:#B8C0D9;
+  --text-faint:#7580A0;
+  --cyan:#00f3ff;
+  --cyan-dim:rgba(0,243,255,0.14);
+  --violet:#b535ff;
+  --violet-dim:rgba(181,53,255,0.14);
+  --green:#00ff88;
+  --red:#f43f5e;
+  --amber:#f59e0b;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(0,243,255,0.09) 0%, transparent 42%),
+    radial-gradient(circle at 88% 92%, rgba(181,53,255,0.09) 0%, transparent 42%);
+  background-attachment:fixed;
+}
+h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif;}
+code,.mono,pre{font-family:'JetBrains Mono',monospace;}
+a{color:var(--cyan);}
+
+/* STREAMING_CHUNK:Maquetant la capçalera i l'indicador de progrés... */
+.topbar{
+  position:sticky; top:0; z-index:20;
+  background:linear-gradient(180deg,#0d0d22 0%,#0a0a1a 100%);
+  border-bottom:1px solid var(--line);
+  padding:14px 24px 12px;
+  backdrop-filter:blur(8px);
+}
+.session-title-row{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px;}
+.session-title{font-size:20px; font-weight:600; letter-spacing:0.2px;}
+.session-title span{color:var(--text-faint); font-weight:400; font-size:13px; margin-left:8px;}
+.teacher-btn{
+  background:var(--panel-2); color:var(--text-dim); border:1px solid var(--line);
+  padding:8px 14px; border-radius:8px; font-size:13px; cursor:pointer;
+  display:flex; align-items:center; gap:6px; transition:all .15s; flex-shrink:0;
+  font-family:'Inter',sans-serif;
+}
+.teacher-btn:hover{border-color:var(--violet); color:var(--violet);}
+
+.nav-row{display:flex; align-items:center; gap:16px;}
+.nav-btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+  width:36px; height:36px; border-radius:8px; cursor:pointer; font-size:18px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s;
+}
+.nav-btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.nav-btn:disabled{opacity:.3; cursor:default;}
+.nav-mid{flex:1; min-width:0;}
+.nav-label{font-size:12px; color:var(--text-faint); margin-bottom:6px; display:flex; justify-content:space-between; gap:12px;}
+.nav-label b{color:var(--text-dim); font-weight:600; white-space:nowrap;}
+.nav-label span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.gauge{height:10px; border-radius:6px; background:var(--panel-2); position:relative; overflow:hidden; border:1px solid var(--line);}
+.gauge-fill{
+  height:100%; border-radius:6px;
+  background:linear-gradient(90deg,#00b4d8,var(--cyan) 55%,var(--violet));
+  box-shadow:0 0 12px rgba(0,243,255,.5);
+  transition:width .35s ease; position:relative;
+}
+.gauge-ticks{position:absolute; inset:0; display:flex;}
+.gauge-ticks div{flex:1; border-right:1px solid rgba(10,10,26,.6);}
+.gauge-ticks div:last-child{border-right:none;}
+
+/* STREAMING_CHUNK:Definint el layout de barra lateral i contingut ample... */
+.layout{display:flex; max-width:1340px; margin:0 auto;}
+.sidebar{width:280px; flex-shrink:0; padding:20px 12px; border-right:1px solid var(--line); min-height:calc(100vh - 96px);}
+.sidebar-label{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-faint); padding:0 12px; margin:18px 0 8px;}
+.sidebar-label:first-child{margin-top:0;}
+.mod-item{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:8px;
+  cursor:pointer; margin-bottom:2px; color:var(--text-dim); font-size:13.5px; line-height:1.35; transition:all .12s;
+}
+.mod-item:hover{background:var(--panel);}
+.mod-item.active{background:var(--cyan-dim); color:var(--text); box-shadow:inset 3px 0 0 var(--cyan);}
+.mod-item .tag{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); background:var(--panel-2); padding:2px 6px; border-radius:4px; flex-shrink:0;}
+.mod-item.active .tag{color:var(--cyan); background:rgba(0,243,255,.12);}
+.mod-item.special{border-top:1px solid var(--line); margin-top:10px; padding-top:14px; border-radius:0;}
+.mod-item.special .tag{color:var(--violet); background:var(--violet-dim);}
+.mod-item.special.quiz .tag{color:var(--green); background:rgba(0,255,136,.12);}
+
+.content{flex:1; padding:30px 44px; min-width:0;}
+.eyebrow{font-size:11px; text-transform:uppercase; letter-spacing:1.2px; color:var(--text-faint); margin-bottom:6px;}
+.content h2{font-size:26px; margin:0 0 18px;}
+.content h3{font-size:16px; margin:24px 0 10px; color:var(--text);}
+.content p{line-height:1.68; color:var(--text-dim); margin:0 0 14px;}
+.content ul,.content ol{line-height:1.68; color:var(--text-dim); padding-left:22px; margin:0 0 14px;}
+.content li{margin-bottom:6px;}
+.content strong{color:var(--text);}
+pre{
+  background:#05050f; border:1px solid rgba(0,243,255,.16); border-radius:var(--radius);
+  padding:14px 16px; overflow-x:auto; font-size:12.5px; line-height:1.6; color:var(--green); margin:0 0 14px;
+}
+pre .cm{color:var(--text-faint);}
+pre .bad{color:var(--red);}
+.mono{font-size:.94em;}
+p .mono,li .mono,td .mono{background:var(--panel-2); padding:1px 5px; border-radius:4px; color:var(--cyan);}
+
+.panel-box{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin:0 0 14px;}
+.panel-box.warn{border-left:3px solid var(--red);}
+.panel-box.tip{border-left:3px solid var(--cyan);}
+.panel-box.deepen{border-left:3px solid var(--violet);}
+.panel-box p{margin:0;}
+
+table.data{width:100%; border-collapse:collapse; font-size:13px; margin:0 0 14px;}
+table.data th{text-align:left; padding:8px 10px; background:var(--panel-2); color:var(--text-faint); font-size:11px; text-transform:uppercase; letter-spacing:.6px; font-weight:600;}
+table.data td{padding:8px 10px; border-top:1px solid var(--line); color:var(--text-dim); vertical-align:top;}
+
+.bottom-nav{display:flex; justify-content:space-between; gap:12px; margin-top:28px; padding-top:18px; border-top:1px solid var(--line);}
+.btn{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--text); font-family:'Inter',sans-serif;
+  padding:9px 16px; border-radius:8px; font-size:13px; cursor:pointer; transition:all .15s;
+}
+.btn:hover:not(:disabled){border-color:var(--cyan); color:var(--cyan);}
+.btn:disabled{opacity:.3; cursor:default;}
+.btn.primary{background:linear-gradient(135deg,rgba(0,243,255,.2),rgba(181,53,255,.25)); border-color:var(--cyan); color:var(--cyan);}
+.btn.primary:hover:not(:disabled){box-shadow:0 0 14px rgba(0,243,255,.35);}
+.btn.danger{border-color:var(--red); color:var(--red);}
+.btn.small{padding:6px 11px; font-size:12px;}
+
+/* STREAMING_CHUNK:Donant estil a la checklist del repte pràctic... */
+.check-item{display:flex; align-items:flex-start; gap:11px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 13px; margin-bottom:7px; cursor:pointer; transition:all .12s;}
+.check-item:hover{border-color:rgba(0,243,255,.3);}
+.check-item input{margin-top:3px; accent-color:var(--cyan); flex-shrink:0;}
+.check-item span{font-size:13.5px; color:var(--text-dim); line-height:1.5;}
+.check-item.done span{color:var(--text-faint); text-decoration:line-through;}
+.progress-row{display:flex; align-items:center; gap:14px; margin-bottom:18px;}
+.progress-bar{flex:1; height:8px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+.progress-bar div{height:100%; width:0; background:linear-gradient(90deg,var(--cyan),var(--violet)); transition:width .3s ease;}
+.progress-pct{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--cyan); min-width:44px; text-align:right;}
+
+/* STREAMING_CHUNK:Preparant les finestres modals i el flux del test... */
+.overlay{position:fixed; inset:0; background:rgba(5,5,15,.82); backdrop-filter:blur(6px); z-index:50; display:flex; align-items:center; justify-content:center; padding:20px;}
+.overlay.hidden{display:none;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; width:520px; max-width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+.modal h3{margin:0 0 4px; font-size:19px;}
+.modal .sub{font-size:13px; color:var(--text-faint); margin-bottom:18px;}
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12px; color:var(--text-faint); margin-bottom:5px;}
+.field input{width:100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 12px; color:var(--text); font-size:14px; font-family:'Inter',sans-serif;}
+.field input:focus{outline:none; border-color:var(--cyan);}
+.error-msg{display:none; color:var(--red); font-size:12.5px; margin-bottom:12px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+/* STREAMING_CHUNK:Donant estil al selector de grup... */
+.grp-row{display:flex; gap:10px;}
+.grp-btn{
+  flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+  color:var(--text-dim); font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600;
+  cursor:pointer; transition:all .12s;
+}
+.grp-btn:hover{border-color:rgba(0,243,255,.35);}
+.grp-btn.selected{border-color:var(--cyan); background:var(--cyan-dim); color:var(--cyan); box-shadow:0 0 12px rgba(0,243,255,.2);}
+.grp-hint{font-size:11.5px; color:var(--text-faint); margin-top:6px;}
+
+.quiz-progress{font-size:12px; color:var(--text-faint); margin-bottom:14px; letter-spacing:.4px;}
+.q-block{margin-bottom:6px;}
+.q-text{font-size:15.5px; font-weight:500; line-height:1.5; margin-bottom:16px;}
+.opt{display:flex; align-items:flex-start; gap:11px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:11px 14px; margin-bottom:8px; cursor:pointer; font-size:13.5px; color:var(--text-dim); transition:all .12s;}
+.opt:hover{border-color:rgba(0,243,255,.35);}
+.opt.selected{border-color:var(--cyan); background:var(--cyan-dim); color:var(--text);}
+.opt .letter{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-faint); background:var(--bg); border-radius:4px; padding:1px 7px; flex-shrink:0;}
+.opt.selected .letter{color:var(--cyan);}
+.result-card{text-align:center;}
+.result-score{font-family:'Space Grotesk',sans-serif; font-size:52px; font-weight:700; color:var(--cyan); text-shadow:0 0 22px rgba(0,243,255,.4); line-height:1.1; margin:6px 0;}
+.result-score.fail{color:var(--red); text-shadow:0 0 22px rgba(244,63,94,.35);}
+
+.stat-row{display:flex; gap:10px; margin-bottom:16px;}
+.stat-card{flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; text-align:center;}
+.stat-card .eyebrow{margin-bottom:3px;}
+.stat-card b{font-family:'Space Grotesk',sans-serif; font-size:19px;}
+.badge{font-family:'JetBrains Mono',monospace; font-size:11px; padding:2px 8px; border-radius:20px; display:inline-block;}
+.badge.ok{color:var(--green); background:rgba(0,255,136,.12); border:1px solid rgba(0,255,136,.3);}
+.badge.ko{color:var(--red); background:rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.3);}
+.toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;}
+table.tp{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.tp th{position:sticky; top:0; background:var(--panel-2); text-align:left; padding:7px 9px; font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-faint);}
+table.tp td{padding:7px 9px; border-top:1px solid var(--line); color:var(--text-dim);}
+
+::-webkit-scrollbar{width:7px; height:7px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,243,255,.22); border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,243,255,.5);}
+
+/* STREAMING_CHUNK:Preparant la versió imprimible dels apunts (fons blanc)... */
+#printArea{display:none;}
+
+/* STREAMING_CHUNK:Protegint els blocs de codi i les solucions... */
+pre{ -webkit-user-select:none; user-select:none; }
+body.teacher-mode pre{ -webkit-user-select:text; user-select:text; }
+pre .gap{ color:var(--amber); background:rgba(245,158,11,.12); border-radius:3px; }
+.code-label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:.8px; text-transform:uppercase; margin:0 0 5px; color:var(--text-faint); }
+.code-label.forats{ color:var(--amber); }
+.code-label.sol{ color:var(--green); }
+.code-label.sol-teacher{ color:var(--violet); }
+.sol-locked{
+  display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  background:repeating-linear-gradient(135deg,rgba(181,53,255,.07) 0 12px,rgba(181,53,255,.02) 12px 24px);
+  border:1px dashed rgba(181,53,255,.45); border-radius:var(--radius); padding:16px 18px; margin:0 0 14px;
+}
+.sol-locked .sol-msg{ font-family:'Space Grotesk',sans-serif; font-size:15px; color:var(--text); }
+.sol-locked .sol-sub{ font-size:12px; color:var(--text-faint); margin-top:3px; }
+.teacher-badge{
+  display:flex; align-items:center; gap:8px; background:var(--violet-dim); border:1px solid rgba(181,53,255,.5);
+  color:#e3b8ff; border-radius:8px; padding:6px 6px 6px 12px; font-size:12.5px; font-weight:600; flex-shrink:0;
+}
+.teacher-badge.hidden{ display:none; }
+.teacher-badge button{ background:transparent; border:1px solid rgba(181,53,255,.5); color:#e3b8ff; border-radius:6px; padding:4px 9px; font-size:11.5px; cursor:pointer; font-family:'Inter',sans-serif; }
+.teacher-badge button:hover{ background:rgba(181,53,255,.25); }
+.header-actions{display:flex; gap:8px; flex-shrink:0;}
+.teacher-btn.notes:hover{border-color:var(--cyan); color:var(--cyan);}
+
+@media print{
+  @page{ size:A4; margin:16mm 14mm; }
+  html,body{ background:#fff !important; background-image:none !important; color:#1a1a2e; }
+  .topbar,.layout,.overlay{ display:none !important; }
+  #printArea{ display:block; font-family:'Inter',sans-serif; font-size:10.5pt; line-height:1.5; color:#1a1a2e; }
+  #printArea .pr-cover{ border-bottom:2px solid #0891b2; padding-bottom:8px; margin-bottom:18px; }
+  #printArea .pr-cover h1{ font-family:'Space Grotesk',sans-serif; font-size:20pt; margin:0 0 2px; color:#0f172a; }
+  #printArea .pr-cover div{ font-size:9.5pt; color:#475569; }
+  #printArea .pr-mod{ margin-bottom:16px; }
+  #printArea h2{ font-family:'Space Grotesk',sans-serif; font-size:14.5pt; color:#0e7490; margin:18px 0 8px; break-after:avoid; page-break-after:avoid; }
+  #printArea h2 .num{ color:#7c3aed; margin-right:6px; }
+  #printArea h3{ font-size:11.5pt; color:#0f172a; margin:14px 0 6px; break-after:avoid; page-break-after:avoid; }
+  #printArea p,#printArea li{ color:#1f2937; }
+  #printArea p{ margin:0 0 8px; }
+  #printArea ul,#printArea ol{ margin:0 0 8px; padding-left:20px; }
+  #printArea strong{ color:#0f172a; }
+  #printArea pre{ background:#f6f7fb; border:1px solid #cbd5e1; color:#0f3d2e; font-size:8.8pt; white-space:pre-wrap; word-break:break-word; break-inside:avoid; page-break-inside:avoid; }
+  #printArea pre .cm{ color:#64748b; }
+  #printArea pre .bad{ color:#b91c1c; }
+  #printArea .mono{ color:#0e7490; background:none !important; padding:0; }
+  #printArea .panel-box{ background:#fff; border:1px solid #cbd5e1; color:#1f2937; break-inside:avoid; page-break-inside:avoid; }
+  #printArea .panel-box.warn{ border-left:4px solid #dc2626; }
+  #printArea .panel-box.tip{ border-left:4px solid #0891b2; }
+  #printArea .panel-box.deepen{ border-left:4px solid #7c3aed; }
+  #printArea .eyebrow{ color:#64748b; }
+  #printArea table.data{ break-inside:avoid; page-break-inside:avoid; }
+  #printArea table.data th{ background:#eef2f7; color:#334155; border-bottom:1px solid #94a3b8; }
+  #printArea table.data td{ color:#1f2937; border-top:1px solid #cbd5e1; }
+  #printArea .pr-challenge{ break-before:page; page-break-before:always; }
+  #printArea .pr-task{ display:flex; gap:8px; margin-bottom:5px; color:#1f2937; }
+  #printArea .pr-task b{ font-family:'JetBrains Mono',monospace; font-weight:400; color:#0f172a; }
+  #printArea pre .gap{ color:#b45309; background:#fef3c7; }
+  #printArea .code-label{ color:#64748b; }
+  #printArea .sol-locked{ display:block; background:#faf5ff; border:1.5px dashed #7c3aed; color:#4c1d95; padding:10px 12px; break-inside:avoid; page-break-inside:avoid; }
+  #printArea .sol-locked .sol-msg{ color:#4c1d95; font-size:10.5pt; }
+  #printArea .pr-foot{ margin-top:18px; font-size:8.5pt; color:#94a3b8; border-top:1px solid #e2e8f0; padding-top:6px; }
+}
+
+@media (max-width:900px){
+  .sidebar{display:none;}
+  .content{padding:22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- STREAMING_CHUNK:Construint la capçalera amb el cicle, el mòdul i el gauge... -->
+<div class="topbar">
+  <div class="session-title-row">
+    <div class="session-title" id="sessionTitleEl"></div>
+    <div class="header-actions">
+      <div class="teacher-badge hidden" id="teacherBadge">👨‍🏫 Mode professor <button onclick="exitTeacherMode()">Sortir del mode professor</button></div>
+      <button class="teacher-btn notes" onclick="exportNotesPDF()" title="Descarrega les diapositives i el repte en PDF (sense el test)">⬇ Apunts PDF</button>
+      <button class="teacher-btn" id="teacherBtn" onclick="openTeacherGate()">🔒 Panell professor</button>
+    </div>
+  </div>
+  <div class="nav-row">
+    <button class="nav-btn" id="prevBtn" onclick="goTo(currentIndex-1)">‹</button>
+    <div class="nav-mid">
+      <div class="nav-label"><b id="navLabel"></b><span id="navModTitle"></span></div>
+      <div class="gauge"><div class="gauge-fill" id="gaugeFill"><div class="gauge-ticks" id="gaugeTicks"></div></div></div>
+    </div>
+    <button class="nav-btn" id="nextBtn" onclick="goTo(currentIndex+1)">›</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<!-- STREAMING_CHUNK:Preparant les portes d'accés al test... -->
+<div class="overlay hidden" id="quizGate">
+  <div class="modal">
+    <div id="quizGateBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="quizModal">
+  <div class="modal" style="width:640px;">
+    <div id="quizBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="teacherGate">
+  <div class="modal">
+    <h3>🔒 Accés professor</h3>
+    <div class="sub">Introdueix la contrasenya del panell.</div>
+    <div class="field"><label>Contrasenya</label><input id="teacherPwdInput" type="password" onkeydown="if(event.key==='Enter')tryUnlockTeacher()"></div>
+    <div class="error-msg" id="teacherError">Contrasenya incorrecta.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeOverlay('teacherGate')">Cancel·la</button>
+      <button class="btn primary" id="teacherEnterBtn" onclick="tryUnlockTeacher()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STREAMING_CHUNK:Muntant el panell del professor... -->
+<div class="overlay hidden" id="teacherPanel">
+  <div class="modal" style="width:840px;">
+    <h3>📊 Panell del professor</h3>
+    <div class="sub" id="tpSession"></div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Test per als alumnes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpOberturaStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpOberturaBtn" onclick="toggleObertura()">···</button>
+    </div>
+
+    <div class="panel-box" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Revisió de respostes</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpRevisioStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpRevisioBtn" onclick="toggleRevisio()">···</button>
+    </div>
+
+    <div class="panel-box" id="tpSolBox" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:2px;">Solucions del codi</div>
+        <div style="font-size:13px; color:var(--text-faint);" id="tpSolStatus">comprovant estat...</div>
+      </div>
+      <button class="btn" id="tpSolBtn" onclick="toggleSolucions()">···</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="eyebrow" id="tpTotalLabel">Lliuraments</div><b style="color:var(--cyan)" id="tpTotal">0</b></div>
+      <div class="stat-card"><div class="eyebrow">Nota mitjana</div><b style="color:var(--violet)" id="tpAvg">0.0</b></div>
+      <div class="stat-card"><div class="eyebrow">% aprovats</div><b style="color:var(--green)" id="tpPass">0%</b></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn small" id="tpGroupBtn" onclick="toggleGroupFilter()">Tots els grups</button>
+      <button class="btn small" id="tpFilterBtn" onclick="toggleFilter()">Només aquest test</button>
+      <button class="btn small" id="tpViewBtn" onclick="toggleViewMode()">Mitjanes per alumne</button>
+      <label style="font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; cursor:pointer;">
+        <input type="checkbox" id="tpAuto" checked onchange="toggleAutoRefresh()" style="accent-color:var(--cyan)"> Auto-refresc 10s
+      </label>
+      <button class="btn small" onclick="loadTeacherData(true)">🔄 Actualitzar</button>
+      <button class="btn small" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn small danger" onclick="resetLocalAttempt()" title="Permet tornar a fer el test en AQUEST ordinador">↺ Reiniciar intent local</button>
+    </div>
+
+    <div id="tpTableWrap" style="max-height:44vh; overflow:auto; border:1px solid var(--line); border-radius:10px;"></div>
+    <div style="font-size:11px; color:var(--text-faint); margin-top:8px;" id="tpStatus"></div>
+
+    <div class="modal-actions">
+      <button class="btn danger" onclick="exitTeacherMode()" style="margin-right:auto;">Sortir del mode professor</button>
+      <button class="btn" onclick="closeOverlay('teacherPanel'); stopAutoRefresh();">Tancar</button>
+    </div>
+  </div>
+</div>
+
+<!-- STREAMING_CHUNK:Reservant el contenidor dels apunts imprimibles... -->
+<div id="printArea"></div>
+
+<script>
+/* =========================================================================
+   STREAMING_CHUNK:Definint la configuració de la sessió...
+   Per generar una sessió nova només cal reomplir SESSION, MODULES,
+   CHALLENGE i TEST. El MOTOR de més avall no s'ha de tocar.
+
+   Blocs de codi dins de MODULES (convenció del .md):
+     ```csharp          → <pre>codi</pre>                        (visible)
+     ```csharp forats   → <pre class="code-forats">codi amb ________</pre>  (visible, buits ressaltats)
+     ```csharp solucio  → <pre class="code-sol" data-sol="sol1"></pre>      (BUIT: el codi és a l'Apps Script, fitxer Sol_SNN.gs)
+   Els identificadors sol1, sol2... són correlatius dins de cada sessió.
+   ========================================================================= */
+const SESSION = {
+  name: "Pickups, so i HUD",
+  subtitle: "CFGS Animació 2D/3D i Videojocs · Mòdul 1091 · Sessió 4",
+  sheetUrl: "https://script.google.com/macros/s/AKfycbz5ShozbYKrwWAn6aug8tFkUohkJ0-7MXrCmYCPBUzFhVa4MRR2_itonuR9CEsg4SDw/exec",   // implementació v2 de l'Apps Script
+  passMark: 5.0,
+  autoRefreshMs: 10000
+};
+
+const MODULES = [
+  {
+    title: "Missió del dia",
+    body: `
+      <p>El UFO ja vola, accelera i rebota. Però passa per sobre dels pickups i... no passa res. Avui això s'acaba: <strong>avui el teu projecte es converteix en un joc</strong> 🎮</p>
+      <p>Un joc necessita tres coses que encara no tenim: un <strong>objectiu</strong> (recollir-ho tot), una <strong>recompensa</strong> (punts i so) i <strong>informació en pantalla</strong> (el HUD).</p>
+      <h3>🎯 Objectius</h3>
+      <ul>
+        <li>Detectar quan el UFO toca un pickup amb <span class="mono">OnTriggerEnter2D</span> i fer-lo desaparèixer.</li>
+        <li>Donar un <strong>valor en punts</strong> a cada pickup amb una variable pública, i tenir pickups d'1 i de 10 punts (primer a mà, després amb un <strong>Prefab Variant</strong>).</li>
+        <li>Fer sonar un <strong>efecte de so</strong> en recollir-los.</li>
+        <li>Muntar un <strong>HUD</strong> amb puntuació, temps i nom del nivell.</li>
+        <li>Crear un <strong>GameManager</strong> que guardi les dades de la partida i un <strong>ScrHUD</strong> que les mostri.</li>
+        <li>Detectar quan s'han recollit <strong>tots</strong> els pickups.</li>
+      </ul>
+    `
+  },
+  {
+    title: "Menjar pickups: OnTriggerEnter2D",
+    body: `
+      <p>A la sessió 2 vam marcar <strong>Is Trigger</strong> al collider dels pickups. Per això el UFO hi passa per sobre sense xocar. Ara aprofitarem la segona part del tracte: <strong>Unity ens avisa quan es toquen</strong>.</p>
+      <table class="data">
+        <thead><tr><th></th><th>Col·lisió</th><th>Trigger</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Els objectes xoquen?</strong></td><td>Sí, reboten o s'aturen</td><td>No, es travessen</td></tr>
+          <tr><td><strong>Unity avisa l'script?</strong></td><td>Sí: <span class="mono">OnCollisionEnter2D</span></td><td>Sí: <span class="mono">OnTriggerEnter2D</span></td></tr>
+          <tr><td><strong>Exemple</strong></td><td>UFO contra la paret</td><td>UFO sobre un pickup</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box deepen">
+        <div class="eyebrow">Analogia 🚪</div>
+        <p>Una paret és una col·lisió. La porta automàtica d'un súper és un trigger: no et frena, però <strong>sap que has passat</strong>.</p>
+      </div>
+
+      <h3>✅ Què cal perquè funcioni</h3>
+      <ol>
+        <li>Tots dos objectes tenen un <strong>Collider 2D</strong>.</li>
+        <li>Un dels dos colliders té <strong>Is Trigger</strong> marcat (el del pickup).</li>
+        <li>Almenys un dels dos té <strong>Rigidbody 2D</strong> (el UFO, des de la sessió 3).</li>
+      </ol>
+
+      <h3>🏷️ Com sé que he tocat un pickup? Amb un Tag</h3>
+      <p><span class="mono">OnTriggerEnter2D</span> s'activa amb <strong>qualsevol</strong> trigger. Per saber que és un pickup, li posem una etiqueta:</p>
+      <ol>
+        <li>Obre el prefab <span class="mono">PF_Pickup</span> (doble clic).</li>
+        <li>A dalt de l'Inspector: <strong>Tag → Add Tag... → +</strong> i crea <span class="mono">Pickup</span>.</li>
+        <li>Torna al prefab i tria <strong>Tag → Pickup</strong>.</li>
+      </ol>
+      <p>Com que ho has fet <strong>al prefab</strong>, totes les instàncies de l'escena queden etiquetades de cop. 💪</p>
+
+      <h3>El codi, a ScrPlayer</h3>
+      <p>Afegeix aquest mètode a l'script que ja tens (no esborris res del moviment):</p>
+      <pre class="code-sol" data-sol="sol1"></pre>
+      <p><span class="mono">collision</span> és <strong>l'altre</strong> collider, el que hem tocat. <span class="mono">collision.gameObject</span> és el GameObject sencer del pickup.</p>
+      <div class="panel-box tip">
+        <div class="eyebrow">💡 Deixa que Visual Studio l'escrigui per tu</div>
+        <p>Dins de la classe, comença a teclejar <span class="mono">OnTrig</span>, tria <span class="mono">OnTriggerEnter2D</span> de la llista i prem <strong>Tab</strong>. T'escriu la línia sencera, amb el <span class="mono">private</span> al davant i el paràmetre <span class="mono">collision</span>. Així no t'equivoques ni amb el nom ni amb les majúscules. (<span class="mono">private void</span> i <span class="mono">void</span> a seques volen dir el mateix.)</p>
+      </div>
+
+      <h3>⚠️ Trampes típiques</h3>
+      <div class="panel-box warn">
+        <div class="eyebrow">El 2D</div>
+        <p><span class="mono">OnTriggerEnter</span> (sense 2D) és per a jocs 3D. No dona cap error: simplement no passa res.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">El tipus del paràmetre</div>
+        <p>És <span class="mono">Collider2D</span>, no <span class="mono">Collider</span> ni <span class="mono">Collision2D</span>.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">Majúscules al tag</div>
+        <p><span class="mono">"Pickup"</span> i <span class="mono">"pickup"</span> són tags diferents.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">Destroy(collision)</div>
+        <p>Només esborra el collider, i el pickup es queda dibuixat. Ha de ser <span class="mono">Destroy(collision.gameObject)</span>.</p>
+      </div>
+    `
+  },
+  {
+    title: "No tots els pickups valen igual",
+    body: `
+      <p>Volem pickups d'<strong>1 punt</strong> i pickups de <strong>10 punts</strong>. Qui ha de saber quant val cada pickup? <strong>El mateix pickup.</strong></p>
+
+      <h3>📦 Un script amb una sola dada</h3>
+      <p>Crea l'script <span class="mono">ScrPickup</span> a <span class="mono">_Project/Scripts/</span> i afegeix-lo al <strong>prefab</strong> <span class="mono">PF_Pickup</span>:</p>
+      <pre class="code-sol" data-sol="sol2"></pre>
+      <p>Sí, ja està. Un script no ha de <em>fer</em> coses per força: aquest només <strong>guarda una dada</strong>.</p>
+      <div class="panel-box deepen">
+        <div class="eyebrow">🧱 OOP · public</div>
+        <p>Fins ara fèiem servir <span class="mono">[SerializeField]</span> per veure una variable a l'Inspector. <span class="mono">public</span> fa això <strong>i a més</strong> deixa que <strong>altres scripts</strong> la llegeixin. El UFO necessitarà preguntar-li al pickup quant val, i per això ha de ser pública.</p>
+      </div>
+
+      <h3>🎨 Instàncies diferents del mateix prefab</h3>
+      <p>Totes les instàncies neixen iguals (1 punt), però cada una pot <strong>canviar els seus valors</strong>:</p>
+      <ol>
+        <li>Selecciona 2 o 3 pickups <strong>a l'escena</strong> (no al prefab).</li>
+        <li>A <span class="mono">ScrPickup</span>, posa <strong>Punts = 10</strong>.</li>
+        <li>Fes que es vegin diferents: canvia el <strong>Color</strong> del Sprite Renderer i/o l'<strong>Scale</strong> del Transform.</li>
+      </ol>
+      <div class="panel-box tip">
+        <div class="eyebrow">👀 Fixa-t'hi</div>
+        <p>Els valors canviats surten <strong>en negreta i amb una ratlla blava</strong> a l'Inspector. Unity et diu: "aquesta instància ja no és igual que el seu prefab en això". Se'n diu un <strong>override</strong>.</p>
+      </div>
+
+      <h3>⚡ Més ràpid: un Prefab Variant</h3>
+      <p>Canviar els pickups <strong>un per un</strong> funciona, però imagina que en tens 30 de 10 punts i ara els vols de color lila. Trenta canvis a mà? 😩</p>
+      <p>Un <strong>Prefab Variant</strong> és un prefab <strong>fill</strong> d'un altre: ho hereta tot del pare i només guarda <strong>les diferències</strong>.</p>
+      <ol>
+        <li>Al Project, clic dret sobre <span class="mono">PF_Pickup</span> → <strong>Create → Prefab Variant</strong>. Posa-li de nom <span class="mono">PF_Pickup10</span>.</li>
+        <li>Obre'l (doble clic) i canvia-hi <strong>Punts = 10</strong>, el <strong>Color</strong> i/o l'<strong>Scale</strong>.</li>
+        <li>Arrossega uns quants <span class="mono">PF_Pickup10</span> a l'escena i esborra els que havies canviat a mà.</li>
+      </ol>
+      <table class="data">
+        <thead><tr><th>Si canvies...</th><th>Què passa</th></tr></thead>
+        <tbody>
+          <tr><td>Alguna cosa a <span class="mono">PF_Pickup</span> (el pare)</td><td>Canvia a <strong>tots</strong> els pickups, també als de 10 punts... <strong>excepte</strong> allò que el variant ja hagi canviat (els seus punts continuaran sent 10)</td></tr>
+          <tr><td>Alguna cosa a <span class="mono">PF_Pickup10</span> (el variant)</td><td>Canvia <strong>només</strong> als de 10 punts</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box warn">
+        <div class="eyebrow">Compte amb Ctrl + D</div>
+        <p>Si <strong>dupliques</strong> <span class="mono">PF_Pickup</span> al Project, tens una còpia <strong>sense cap relació</strong> amb l'original. Si després afegeixes un script a l'un, l'altre no se n'assabenta. El variant, en canvi, <strong>manté el vincle</strong>.</p>
+      </div>
+
+      <h3>🧑‍⚖️ On apuntem els punts? Al GameManager</h3>
+      <p>El UFO es mou i menja. El pickup sap quant val. Però el <strong>marcador</strong> de la partida no és cosa de cap dels dos: necessitem un <strong>àrbitre</strong>.</p>
+      <ol>
+        <li>Hierarchy → <strong>Create Empty</strong> → nom <span class="mono">GameManager</span>.</li>
+        <li>Crea l'script <span class="mono">ScrGameManager</span> a <span class="mono">_Project/Scripts/</span> i afegeix-l'hi.</li>
+      </ol>
+      <pre class="code-sol" data-sol="sol3"></pre>
+
+      <h3>📌 Una variable per a tothom: static</h3>
+      <p>Cada pickup té <strong>la seva</strong> variable <span class="mono">punts</span>: n'hi ha tantes com pickups. Però de marcador només n'hi ha <strong>un</strong>, i tothom l'ha de poder trobar fàcilment. Per a això serveix <span class="mono">static</span>:</p>
+      <table class="data">
+        <thead><tr><th></th><th>Variable normal</th><th>Variable static</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Quantes n'hi ha?</strong></td><td>Una per cada objecte</td><td><strong>Una de sola</strong> per a tota la classe</td></tr>
+          <tr><td><strong>Com s'hi arriba?</strong></td><td>A través d'un objecte: <span class="mono">pickup.punts</span></td><td>Amb el <strong>nom de la classe</strong>: <span class="mono">ScrGameManager.punts</span></td></tr>
+          <tr><td><strong>Exemple</strong></td><td>Els punts que val <em>aquest</em> pickup</td><td>El marcador de la partida</td></tr>
+        </tbody>
+      </table>
+      <div class="panel-box deepen">
+        <div class="eyebrow">Analogia 🏟️</div>
+        <p>Cada jugador porta el seu dorsal (variable normal), però el marcador de l'estadi és un de sol i tothom el veu (variable <span class="mono">static</span>).</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">Per què punts = 0 a l'Awake?</div>
+        <p>Una variable <span class="mono">static</span> <strong>no es reinicia sola</strong>: si tornes a carregar l'escena, es queda amb el valor que tenia. Per això la posem a zero nosaltres en començar. (<span class="mono">Awake()</span> és com <span class="mono">Start()</span>, però s'executa encara abans.)</p>
+      </div>
+
+      <h3>El UFO pregunta "quant vals?" i ho apunta</h3>
+      <p>A <span class="mono">ScrPlayer</span>:</p>
+      <pre class="code-sol" data-sol="sol4"></pre>
+      <p>Fixa't en la línia clau: <span class="mono">ScrGameManager.punts += pickup.punts;</span></p>
+      <ul>
+        <li><span class="mono">pickup.punts</span> → els punts d'<strong>aquest pickup</strong> (hi arribo a través de l'objecte).</li>
+        <li><span class="mono">ScrGameManager.punts</span> → <strong>el</strong> marcador (hi arribo amb el nom de la classe, sense arrossegar res a l'Inspector).</li>
+      </ul>
+      <p>Prova-ho: la Console ha d'anar sumant d'1 en 1 o de 10 en 10 segons el que et mengis.</p>
+    `
+  },
+  {
+    title: "Que soni! 🔊",
+    body: `
+      <p>Un pickup que desapareix en silenci no dona cap gust. El so és mig <em>game feel</em>.</p>
+      <ol>
+        <li>Copia <span class="mono">pickup.wav</span> a <span class="mono">_Project/Audio/</span>.</li>
+        <li>A <span class="mono">ScrPlayer</span>, afegeix una variable per al so i fes-lo sonar (codi de sota).</li>
+        <li>Torna a Unity, selecciona el UFO i <strong>arrossega</strong> <span class="mono">pickup.wav</span> a la casella <strong>So Pickup</strong>.</li>
+      </ol>
+      <pre class="code-sol" data-sol="sol5"></pre>
+
+      <h3>Què fa aquesta línia?</h3>
+      <p><span class="mono">PlayClipAtPoint</span> crea un altaveu temporal, fa sonar el clip i l'esborra tot sol quan acaba. Li hem de dir <strong>què</strong> sona (<span class="mono">soPickup</span>) i <strong>on</strong> (la posició de la càmera, que és on hi ha "les orelles" del joc: l'<strong>Audio Listener</strong>).</p>
+
+      <h3>⚠️ Trampes típiques</h3>
+      <div class="panel-box warn">
+        <div class="eyebrow">Error vermell a la Console en tocar un pickup</div>
+        <p>T'has oblidat d'arrossegar el so a l'Inspector.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">No se sent res</div>
+        <p>Mira que el botó d'altaveu de la finestra Game no estigui tatxat (<strong>Mute Audio</strong>).</p>
+      </div>
+    `
+  },
+  {
+    title: "El HUD: muntem la interfície",
+    body: `
+      <p><strong>HUD</strong> (<em>Heads-Up Display</em>) és la informació que el jugador veu sempre a sobre del joc. El nostre mostrarà <strong>punts</strong>, <strong>temps</strong> i <strong>nom del nivell</strong>.</p>
+
+      <h3>🖥️ Primer de tot: pantalla de 1280×720</h3>
+      <p>A la finestra <strong>Game</strong>, obre el desplegable de resolució (on diu <em>Free Aspect</em>) → <strong>+</strong> → <em>Fixed Resolution</em> <strong>1280 × 720</strong>. Així tots veiem exactament el mateix.</p>
+
+      <h3>✂️ Preparar els gràfics</h3>
+      <ol>
+        <li>Copia <span class="mono">hud_spritesheet.png</span> a <span class="mono">_Project/Sprites/</span>.</li>
+        <li>Selecciona'l. A l'Inspector: <strong>Texture Type: Sprite (2D and UI)</strong> i <strong>Sprite Mode: Multiple</strong> → <strong>Apply</strong>.</li>
+        <li><strong>Open Sprite Editor → Slice → Type: Automatic → Slice → Apply</strong>.</li>
+      </ol>
+      <p>Ara, si desplegues la imatge al Project, hi veuràs tots els trossos per separat (<span class="mono">hud_spritesheet_0</span>, <span class="mono">_1</span>, <span class="mono">_2</span>...). Un <strong>spritesheet</strong> és això: moltes imatges en un sol fitxer. Els reconeixeràs per la miniatura.</p>
+
+      <h3>🖼️ El Canvas</h3>
+      <p>Tota la interfície viu dins d'un <strong>Canvas</strong> (un "vidre" transparent davant del joc).</p>
+      <ol>
+        <li>Hierarchy → clic dret → <strong>UI → Canvas</strong>. Posa-li de nom <span class="mono">HUD</span>.</li>
+        <li>Al component <strong>Canvas Scaler</strong>: <strong>UI Scale Mode: Scale With Screen Size</strong> i <strong>Reference Resolution: 1280 × 720</strong>.</li>
+      </ol>
+      <div class="panel-box tip">
+        <div class="eyebrow">💡 El Canvas es veu enorme</div>
+        <p>A la vista Scene, el Canvas es veu <strong>enorme</strong> comparat amb el taulell. És normal! Fes doble clic sobre <span class="mono">HUD</span> a la Hierarchy per enquadrar-lo, i treballa mirant la vista <strong>Game</strong>.</p>
+      </div>
+
+      <h3>🧩 Les peces</h3>
+      <p>Cada peça és un <strong>UI → Image</strong> dins del Canvas. Després de triar-ne el sprite, prem <strong>Set Native Size</strong> perquè no es deformi.</p>
+      <table class="data">
+        <thead><tr><th>GameObject</th><th>Sprite</th><th>Anchor (ancoratge)</th><th>Pos X</th><th>Pos Y</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">PanellPunts</span></td><td>el panell petit</td><td>a dalt a l'esquerra</td><td>164</td><td>-64</td></tr>
+          <tr><td><span class="mono">PanellTemps</span></td><td>el panell petit</td><td>a dalt a la dreta</td><td>-164</td><td>-64</td></tr>
+          <tr><td><span class="mono">PanellNivell</span></td><td>el bàner hexagonal</td><td>a dalt al centre</td><td>0</td><td>-43</td></tr>
+        </tbody>
+      </table>
+      <p>L'<strong>anchor</strong> és el punt de la pantalla des d'on es mesura la posició. Es tria amb el quadradet de dalt a l'esquerra del <strong>Rect Transform</strong>.</p>
+      <p>Les icones van <strong>com a filles</strong> del seu panell (així es mouen juntes):</p>
+      <ul>
+        <li><span class="mono">IconaPunts</span> (sprite de la gemma) dins de <span class="mono">PanellPunts</span>, a <strong>Pos X -96</strong>.</li>
+        <li><span class="mono">IconaTemps</span> (sprite del rellotge) dins de <span class="mono">PanellTemps</span>, a <strong>Pos X -96</strong>.</li>
+      </ul>
+    `
+  },
+  {
+    title: "Textos amb TextMeshPro",
+    body: `
+      <p>Els números i els noms no són imatges: són <strong>text</strong>, perquè han de canviar mentre juguem.</p>
+      <ol>
+        <li>Clic dret sobre <span class="mono">PanellPunts</span> → <strong>UI → Text - TextMeshPro</strong>. El primer cop Unity et demanarà <strong>Import TMP Essentials</strong>: digues que sí.</li>
+        <li>Posa-li de nom <span class="mono">TextPunts</span>, escriu <span class="mono">0</span> i ajusta <strong>Font Size</strong> (34), <strong>Font Style</strong> (Bold) i <strong>Color</strong>.</li>
+        <li>Fes el mateix amb <span class="mono">TextTemps</span> (dins de <span class="mono">PanellTemps</span>, text <span class="mono">0,0 s</span>) i <span class="mono">TextNivell</span> (dins de <span class="mono">PanellNivell</span>, text <span class="mono">NIVELL</span>, <strong>alineat al centre</strong>).</li>
+      </ol>
+      <div class="panel-box tip">
+        <div class="eyebrow">🎨 Opcional però queda molt bé</div>
+        <p>Un text petit a sobre de cada número que digui <span class="mono">PUNTS</span> i <span class="mono">TEMPS</span> (Font Size 14). Aquests no canviaran mai.</p>
+      </div>
+      <p>Ara el HUD <strong>es veu</strong>, però és de cartró pedra: sempre diu <span class="mono">0</span>. Falta algú que l'actualitzi.</p>
+    `
+  },
+  {
+    title: "El HUD cobra vida: ScrHUD",
+    body: `
+      <p>Ja tenim un marcador (<span class="mono">ScrGameManager.punts</span>) i uns textos a la pantalla. Falta algú que <strong>copiï l'un als altres</strong>, i que hi posi també el <strong>temps</strong> i el <strong>nom del nivell</strong>.</p>
+
+      <h3>🧱 OOP · Cada objecte, la seva feina</h3>
+      <table class="data">
+        <thead><tr><th>Script</th><th>On viu</th><th>Què fa</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">ScrPickup</span></td><td>A cada pickup</td><td>Sap quants punts val</td></tr>
+          <tr><td><span class="mono">ScrPlayer</span></td><td>Al UFO</td><td>Es mou, detecta què toca i apunta els punts</td></tr>
+          <tr><td><span class="mono">ScrGameManager</span></td><td>Al <span class="mono">GameManager</span></td><td>Guarda les <strong>dades</strong> de la partida</td></tr>
+          <tr><td><span class="mono">ScrHUD</span></td><td>Al Canvas <span class="mono">HUD</span></td><td><strong>Mostra</strong> les dades a la pantalla</td></tr>
+        </tbody>
+      </table>
+      <p>Per què separar-ho? Perquè si demà canvies tot el disseny del HUD, <strong>no hauràs de tocar</strong> les regles del joc. I a l'inrevés.</p>
+
+      <h3>🖥️ L'script del HUD</h3>
+      <p>Crea l'script <span class="mono">ScrHUD</span> a <span class="mono">_Project/Scripts/</span> i afegeix-lo al Canvas <strong><span class="mono">HUD</span></strong>:</p>
+      <pre class="code-sol" data-sol="sol6"></pre>
+      <p>Selecciona el Canvas <span class="mono">HUD</span> i <strong>arrossega</strong> <span class="mono">TextPunts</span>, <span class="mono">TextTemps</span> i <span class="mono">TextNivell</span> de la Hierarchy a les seves caselles.</p>
+      <p>Fes Play: el temps corre ⏱️, el nom de l'escena surt al bàner i <strong>els punts pugen</strong> quan menges. Ja pots esborrar el <span class="mono">print</span> de <span class="mono">ScrPlayer</span>.</p>
+
+      <h3>🔍 Què està passant?</h3>
+      <ul>
+        <li><strong><span class="mono">.text</span></strong> és el que hi ha escrit en un text de TextMeshPro. Només accepta <strong>text</strong>, no números.</li>
+        <li><strong><span class="mono">.ToString()</span></strong> converteix un número en text. Amb <span class="mono">"F1"</span> el deixa amb <strong>1 decimal</strong>: <span class="mono">23,4567</span> → <span class="mono">23,4</span>. (Segons l'idioma de l'ordinador, el decimal surt amb coma o amb punt.)</li>
+        <li><strong><span class="mono">Time.time</span></strong> són els segons que han passat <strong>des que has premut Play</strong>. Unity ja porta el compte: només cal llegir-lo.</li>
+        <li><strong><span class="mono">SceneManager.GetActiveScene().name</span></strong> és el nom de l'escena que s'està jugant. Al bàner hi sortirà <span class="mono">SC_Joc</span>, o el nom que li hagis donat a la teva escena. Vols que hi digui una altra cosa? Canvia el nom de l'escena al Project.</li>
+        <li><span class="mono">ScrHUD</span> llegeix <span class="mono">ScrGameManager.punts</span> igual que <span class="mono">ScrPlayer</span> hi escriu: amb el nom de la classe. <strong>Aquesta és la gràcia de <span class="mono">static</span></strong>: scripts diferents comparteixen la mateixa dada sense arrossegar cap referència.</li>
+      </ul>
+
+      <h3>⚠️ Trampes típiques</h3>
+      <div class="panel-box warn">
+        <div class="eyebrow">Error vermell a la Console que parla de ScrHUD</div>
+        <p>T'has deixat alguna casella de text buida a l'Inspector.</p>
+      </div>
+      <div class="panel-box warn">
+        <div class="eyebrow">TMP_Text o SceneManager en vermell</div>
+        <p>Falta el seu <span class="mono">using</span>. Posa-t'hi a sobre i prem <strong>Ctrl + .</strong> a Visual Studio.</p>
+      </div>
+
+      <div class="panel-box deepen">
+        <div class="eyebrow">🤖 Demana-ho a la IA</div>
+        <p>Selecciona el mètode <span class="mono">Update</span> de <span class="mono">ScrHUD</span> a Visual Studio i pregunta a Copilot: <em>"Explica'm aquest codi línia per línia, com si fos la primera vegada que programo"</em>. Després prova: <em>"Què passaria si canvio F1 per F3?"</em>. La IA és molt bona <strong>explicant</strong> codi que ja tens. Fes-la servir per entendre, no per copiar.</p>
+      </div>
+    `
+  },
+  {
+    title: "Ja no en queden! 🏁",
+    body: `
+      <p>Un joc necessita un final. El nostre s'acaba quan <strong>no queda cap pickup</strong>. Per saber-ho, necessitem un <strong>comptador de pickups</strong>. I com que també n'hi ha d'haver un de sol... una altra <span class="mono">static</span>!</p>
+      <p>A <span class="mono">ScrGameManager</span>, a dalt, al costat de <span class="mono">punts</span>:</p>
+      <pre class="code-sol" data-sol="sol7"></pre>
+
+      <h3>👶💀 Cada pickup s'apunta i es desapunta</h3>
+      <p>Fins ara <span class="mono">ScrPickup</span> només guardava una dada. Ara farà dues coses: <strong>dir "soc aquí" quan neix</strong> i <strong>dir "me'n vaig" quan mor</strong>.</p>
+      <pre class="code-sol" data-sol="sol8"></pre>
+      <table class="data">
+        <thead><tr><th>Mètode</th><th>Quan el crida Unity</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">Awake()</span></td><td>Quan l'objecte es crea, abans de qualsevol <span class="mono">Start()</span> (ja l'hem fet servir al GameManager)</td></tr>
+          <tr><td><span class="mono">Start()</span></td><td>Just abans del primer frame</td></tr>
+          <tr><td><span class="mono">Update()</span></td><td>A cada frame</td></tr>
+          <tr><td><span class="mono">OnDestroy()</span></td><td>Quan l'objecte es destrueix</td></tr>
+        </tbody>
+      </table>
+      <p>Avantatge: si demà poses 20 pickups més a l'escena, <strong>no has de tocar el codi</strong>. Cadascun es compta tot sol. 💪</p>
+
+      <h3>🏁 L'àrbitre xiula el final</h3>
+      <p>A <span class="mono">ScrGameManager</span>, afegeix un mètode <span class="mono">Update()</span>:</p>
+      <pre class="code-sol" data-sol="sol9"></pre>
+      <p>Prova-ho: menja't tots els pickups i mira la Console.</p>
+      <div class="panel-box tip">
+        <div class="eyebrow">🤔 El missatge surt moltes vegades</div>
+        <p>Una per frame. És normal: <span class="mono">Update</span> s'executa contínuament i la condició es continua complint. De moment ja ens va bé.</p>
+      </div>
+      <p>De moment el final és només un missatge a la Console. Fer-lo aparèixer en pantalla és el repte opcional d'avui... i el punt de partida de la propera sessió 😉</p>
+    `
+  },
+  {
+    title: "Resum de la sessió",
+    body: `
+      <div class="panel-box tip">
+        <div class="eyebrow">5 idees per endur-te</div>
+        <p style="margin-bottom:8px;"><strong>1.</strong> 🚪 <strong>Trigger:</strong> no xoca, però avisa. <span class="mono">OnTriggerEnter2D(Collider2D collision)</span> + <span class="mono">collision.CompareTag("Pickup")</span>.</p>
+        <p style="margin-bottom:8px;"><strong>2.</strong> 📦 <strong><span class="mono">public</span>:</strong> una variable pública es veu a l'Inspector <strong>i</strong> la poden llegir altres scripts. Cada instància d'un prefab pot tenir el seu valor (<em>override</em>), i un <strong>Prefab Variant</strong> estalvia repetir els mateixos canvis.</p>
+        <p style="margin-bottom:8px;"><strong>3.</strong> 🔊 <strong>So:</strong> un <span class="mono">AudioClip</span> a l'Inspector i <span class="mono">AudioSource.PlayClipAtPoint(...)</span>.</p>
+        <p style="margin-bottom:8px;"><strong>4.</strong> 🖼️ <strong>HUD:</strong> Canvas + Image (gràfics) + TextMeshPro (text que canvia). <span class="mono">using TMPro;</span> i <span class="mono">TMP_Text</span>. El <span class="mono">ScrGameManager</span> <strong>guarda</strong> les dades i el <span class="mono">ScrHUD</span> les <strong>mostra</strong>.</p>
+        <p><strong>5.</strong> 🧑‍⚖️ <strong>GameManager i <span class="mono">static</span>:</strong> una variable <span class="mono">static</span> és <strong>una de sola per a tota la classe</strong> i s'hi arriba amb el nom de la classe: <span class="mono">ScrGameManager.punts</span>. Els pickups es compten sols amb <span class="mono">Awake()</span> i <span class="mono">OnDestroy()</span>.</p>
+      </div>
+    `
+  }
+];
+
+/* Repte pràctic: tasques obligatòries (checklist amb progrés) + reptes opcionals */
+const CHALLENGE = {
+  intro: "Converteix el teu projecte en un joc de veritat: el UFO es menja els pickups, cada pickup dona els seus punts, sona un efecte i el HUD ho mostra tot. Marca cada pas a mesura que el completis.",
+  tasks: [
+    "Crea el tag <strong>Pickup</strong> i assigna’l al prefab <span class='mono'>PF_Pickup</span>.",
+    "Afegeix <span class='mono'>OnTriggerEnter2D</span> a <strong>ScrPlayer</strong> i fes que el UFO destrueixi els pickups que toca.",
+    "Crea l’script <strong>ScrPickup</strong> amb la variable pública <span class='mono'>punts</span>, afegeix-lo al prefab i tingues a l’escena pickups d’<strong>1 punt</strong> i de <strong>10 punts</strong> que es distingeixin pel <strong>color i/o la mida</strong> (els de 10, amb el variant <span class='mono'>PF_Pickup10</span>).",
+    "Crea el <strong>GameManager</strong> amb l’script <strong>ScrGameManager</strong> i la variable estàtica <span class='mono'>punts</span>, i fes que el UFO hi sumi els punts de cada pickup (comprova-ho a la Console).",
+    "Fes sonar <strong>pickup.wav</strong> cada vegada que el UFO recull un pickup.",
+    "Posa la finestra Game a <strong>1280×720</strong>, retalla <span class='mono'>hud_spritesheet.png</span> i crea el Canvas <strong>HUD</strong> amb el Canvas Scaler a 1280×720.",
+    "Munta els tres panells (<strong>punts</strong>, <strong>temps</strong> i <strong>nivell</strong>) amb les seves icones i els seus textos TextMeshPro.",
+    "Crea l’script <strong>ScrHUD</strong> al Canvas i fes que mostri la <strong>puntuació</strong> del marcador.",
+    "Fes que el HUD mostri també el <strong>temps amb un decimal</strong> (<span class='mono'>Time.time</span>) i el <strong>nom de l’escena</strong> com a nom del nivell.",
+    "Fes que els pickups es comptin sols (<span class='mono'>Awake</span> i <span class='mono'>OnDestroy</span>) i que, en recollir l’últim, surti <strong>GAME OVER</strong> a la Console. Acaba amb un <strong>check-in</strong> a Unity Version Control, sense errors."
+  ],
+  optional: [
+    "<strong>Pantalla de Game Over 🏆:</strong> a <span class='mono'>hud_spritesheet.png</span> tens una finestra, una cinta de títol i un botó. Munta amb ells un panell <span class='mono'>PanellGameOver</span> dins del Canvas, deixa’l <strong>desactivat</strong> (la casella de dalt de l’Inspector) i fes que aparegui quan s’acabin els pickups. <em>Pista:</em> a <span class='mono'>ScrHUD</span>, <span class='mono'>[SerializeField] GameObject panellGameOver;</span> i <span class='mono'>panellGameOver.SetActive(true);</span>.",
+    "<strong>Atura el rellotge ⏱️:</strong> quan surti el GAME OVER, el temps del HUD s’ha de quedar clavat. <em>Pista:</em> <span class='mono'>Time.time</span> no es pot aturar, però <span class='mono'>ScrHUD</span> pot <strong>deixar d’actualitzar el text</strong> quan <span class='mono'>ScrGameManager.pickups</span> sigui 0.",
+    "<strong>Cada pickup, el seu so 🎵:</strong> mou la variable <span class='mono'>AudioClip</span> de <span class='mono'>ScrPlayer</span> a <span class='mono'>ScrPickup</span> i fes que els pickups de 10 punts sonin diferent.",
+    "<strong>Pickup trampa 💀:</strong> crea un pickup de color vermell que <strong>resti</strong> 5 punts. Has hagut de canviar el codi? Per què?"
+  ]
+};
+
+/* 10 preguntes · opcions A-D · l'opció E (NS/NC) l'afegeix el motor */
+const TEST = {
+  name: "Test - Unity 2D Sessió 4",
+  questions: [
+    { q:"Quin mètode crida Unity quan el UFO entra en un collider 2D marcat com a Is Trigger?", opts:["OnCollisionEnter2D(Collision2D collision)","OnTriggerEnter(Collider collision)","OnTriggerEnter2D(Collider2D collision)","OnTrigger2D(GameObject collision)"], correct:2 },
+    { q:"Dins d’OnTriggerEnter2D(Collider2D collision) escrius Destroy(collision); Què passa?", opts:["S’esborra només el collider, i el pickup es continua veient","S’esborra el pickup sencer","S’esborra el UFO","Unity dona un error de compilació"], correct:0 },
+    { q:"Quina diferència hi ha entre public int punts i [SerializeField] int punts?", opts:["Cap, són exactament el mateix","La public no es veu a l’Inspector","La [SerializeField] no es pot canviar mai","Totes dues es veuen a l’Inspector, però només la public la poden llegir altres scripts"], correct:3 },
+    { q:"Canvies Punts a 10 en un pickup de l’escena (no al prefab). Què passa amb la resta de pickups?", opts:["Tots passen a valer 10","No canvien: només has modificat aquella instància (override)","El prefab s’esborra","Unity et demana crear un prefab nou"], correct:1 },
+    { q:"Què fa collision.GetComponent<ScrPickup>()?", opts:["Crea un script ScrPickup nou","Demana a l’objecte tocat el seu component ScrPickup, per poder-ne llegir les dades","Esborra el component ScrPickup","Busca tots els pickups de l’escena"], correct:1 },
+    { q:"Quina línia cal a dalt de l’script per poder fer servir TMP_Text?", opts:["using UnityEngine.UI;","using UnityEngine.InputSystem;","using Text;","using TMPro;"], correct:3 },
+    { q:"Time.time val 12,3456 segons. Què mostra Time.time.ToString(\"F1\")?", opts:["El número amb un decimal: 12,3","El número sense decimals: 12","El número sencer: 12,3456","El text F1"], correct:0 },
+    { q:"A ScrGameManager tenim public static int punts; Què vol dir static?", opts:["Que la variable no es pot canviar mai","Que cada pickup té la seva pròpia còpia","Que n’hi ha una de sola per a tota la classe, i s’hi arriba amb ScrGameManager.punts","Que es veu a l’Inspector"], correct:2 },
+    { q:"Cada pickup fa ScrGameManager.pickups++ a l’Awake() i ScrGameManager.pickups-- a l’OnDestroy(). Quin avantatge té?", opts:["El comptador sempre és correcte, posis els pickups que posis a l’escena, sense tocar el codi","Els pickups giren més ràpid","El so se sent més fort","Ja no cal posar el tag Pickup"], correct:0 },
+    { q:"(Sessió 3) Mous el UFO amb rb.AddForce. A quin mètode ha d’anar aquesta línia?", opts:["A Start()","A OnMove()","A Update()","A FixedUpdate()"], correct:3 }
+  ]
+};
+
+/* =========================================================================
+   STREAMING_CHUNK:Iniciant el MOTOR (no cal tocar res a partir d'aquí)...
+   ========================================================================= */
+const OPEN_KEY = TEST.name + " · OBERTURA";
+const REVIEW_KEY = TEST.name;
+const SOL_KEY = TEST.name + " · SOLUCIONS";
+
+/* Mode professor: dura mentre la pestanya estigui oberta (sessionStorage).
+   La contrasenya NO és a l'HTML: la valida l'Apps Script. */
+const TEACHER_KEY = 'unity2d_teacher_pwd';
+let teacherPwd = null;           // contrasenya validada (només en mode professor)
+let teacherMode = false;
+const HAS_SOLUTIONS = MODULES.some(function(m){ return /data-sol=/.test(m.body); });
+let solCodes = {};               // { sol1: "codi...", ... } rebut del servidor
+let solUnlocked = false;         // desbloquejades per als alumnes?
+let solChecked = false;          // ja s'ha consultat el servidor?
+
+const STORAGE_KEY = 'unity2d_attempt_' + TEST.name;
+
+/* Grups de classe: l'ID que s'envia al full és la lletra del grup + el número (p. ex. A24).
+   Franges de divendres (hora local del navegador) en què el grup es preselecciona sol.
+   L'alumne sempre el pot canviar. Fora d'aquestes franges no es preselecciona cap grup. */
+const GROUPS = ['A','B'];
+const GROUP_SLOTS = [
+  { day:5, from:'09:00', to:'11:00', group:'B' },
+  { day:5, from:'11:30', to:'13:30', group:'A' }
+];
+
+let currentIndex = 0;
+let currentView = 'module';
+let studentInfo = null;
+let quizQuestions = [], quizAnswers = [], currentQuestionIdx = 0;
+let quizSent = false;
+let lastAttempt = null;   // intent ja realitzat en aquest navegador
+let selectedGroup = null; // grup triat al formulari d'identificació
+
+/* ---------- PERSISTÈNCIA DE L'INTENT ---------- */
+function saveAttempt(attempt){
+  lastAttempt = attempt;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(attempt)); } catch(e){}
+}
+
+function loadAttempt(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    const a = JSON.parse(raw);
+    if(!a || !Array.isArray(a.order) || !Array.isArray(a.answers)) return null;
+    if(a.order.length !== TEST.questions.length) return null;   // el test ha canviat: intent no vàlid
+    return a;
+  } catch(e){ return null; }
+}
+
+function clearAttempt(){
+  lastAttempt = null;
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+}
+
+// Reconstrueix les preguntes i respostes de l'intent desat, per poder-ne veure la revisió
+function restoreAttempt(a){
+  quizQuestions = a.order.map(function(idx){ return TEST.questions[idx]; });
+  quizAnswers = a.answers.slice();
+  studentInfo = a.student;
+  quizSent = true;
+}
+let checkedTasks = [];
+let teacherRows = [], filterOnlyThis = true, viewMode = 'submissions', autoTimer = null;
+let groupFilter = 'ALL';   // 'ALL' · 'A' · 'B'
+let oberturaUnlocked = false, revisioUnlocked = false;
+
+function esc(v){
+  return String(v === null || v === undefined ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function closeOverlay(id){ document.getElementById(id).classList.add('hidden'); }
+function openOverlay(id){ document.getElementById(id).classList.remove('hidden'); }
+
+/* ---------- GRUPS ---------- */
+function toMinutes(hhmm){
+  const p = hhmm.split(':');
+  return parseInt(p[0],10) * 60 + parseInt(p[1],10);
+}
+
+// Retorna el grup que toca segons el dia i l'hora actuals, o null si no n'hi ha cap
+function suggestGroup(){
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  for(let i = 0; i < GROUP_SLOTS.length; i++){
+    const s = GROUP_SLOTS[i];
+    if(now.getDay() === s.day && mins >= toMinutes(s.from) && mins < toMinutes(s.to)) return s.group;
+  }
+  return null;
+}
+
+// Extreu la lletra de grup d'un ID del full ("A24" → "A"); null si l'ID no en porta
+function groupOfId(id){
+  const m = String(id === null || id === undefined ? '' : id).trim().toUpperCase().match(/^([A-Z])/);
+  return (m && GROUPS.indexOf(m[1]) > -1) ? m[1] : null;
+}
+
+/* ---------- NAVEGACIÓ ---------- */
+function buildGaugeTicks(){
+  document.getElementById('gaugeTicks').innerHTML = MODULES.map(function(){ return '<div></div>'; }).join('');
+}
+
+function buildSidebar(){
+  const sb = document.getElementById('sidebar');
+  let html = '<div class="sidebar-label">Diapositives</div>';
+  MODULES.forEach(function(m,i){
+    html += '<div class="mod-item' + (currentView==='module' && i===currentIndex ? ' active' : '') + '" onclick="goTo(' + i + ')">'
+          + '<span class="tag">' + String(i+1).padStart(2,'0') + '</span><span>' + esc(m.title) + '</span></div>';
+  });
+  html += '<div class="sidebar-label">Avaluació</div>'
+        + '<div class="mod-item special quiz' + (currentView==='quiz'?' active':'') + '" onclick="openQuizGate()"><span class="tag">TEST</span><span>Fer el test</span></div>'
+        + '<div class="mod-item special' + (currentView==='challenge'?' active':'') + '" onclick="goToChallenges()"><span class="tag">✦</span><span>Repte pràctic</span></div>';
+  sb.innerHTML = html;
+}
+
+function updateGauge(){
+  const pct = ((currentIndex+1)/MODULES.length)*100;
+  document.getElementById('gaugeFill').style.width = pct + '%';
+  document.getElementById('navLabel').textContent = 'Diapositiva ' + (currentIndex+1) + ' de ' + MODULES.length;
+  document.getElementById('navModTitle').textContent = MODULES[currentIndex].title;
+  document.getElementById('prevBtn').disabled = (currentIndex === 0);
+  document.getElementById('nextBtn').disabled = (currentIndex === MODULES.length-1);
+}
+
+function renderModule(i){
+  const m = MODULES[i];
+  document.getElementById('content').innerHTML =
+    '<div class="eyebrow">Diapositiva ' + (i+1) + ' de ' + MODULES.length + '</div>'
+    + '<h2>' + esc(m.title) + '</h2>'
+    + renderBody(m.body, 'screen')
+    + '<div class="bottom-nav">'
+    + '<button class="btn" onclick="goTo(' + (i-1) + ')"' + (i===0?' disabled':'') + '>‹ Anterior</button>'
+    + (i===MODULES.length-1
+        ? '<button class="btn primary" onclick="goToChallenges()">Anar al repte pràctic ›</button>'
+        : '<button class="btn primary" onclick="goTo(' + (i+1) + ')">Següent ›</button>')
+    + '</div>';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function goTo(i){
+  if(i < 0 || i >= MODULES.length) return;
+  currentIndex = i;
+  currentView = 'module';
+  renderModule(i);
+  buildSidebar();
+  updateGauge();
+}
+
+document.addEventListener('keydown', function(e){
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if(tag === 'input' || tag === 'textarea' || tag === 'select') return;
+  const anyOverlay = ['quizGate','quizModal','teacherGate','teacherPanel']
+    .some(function(id){ return !document.getElementById(id).classList.contains('hidden'); });
+  if(anyOverlay){
+    if(e.key === 'Escape'){ ['quizGate','quizModal','teacherGate','teacherPanel'].forEach(closeOverlay); }
+    return;
+  }
+  if(currentView !== 'module') return;
+  if(e.key === 'ArrowRight') goTo(currentIndex+1);
+  if(e.key === 'ArrowLeft') goTo(currentIndex-1);
+});
+
+/* ---------- REPTE PRÀCTIC ----------
+   Si una sessió no té repte (CHALLENGE.tasks buit, p. ex. la sessió diagnòstica),
+   es mostra una pantalla informativa en comptes de la checklist, per evitar un "NaN%". */
+function goToChallenges(){
+  currentView = 'challenge';
+
+  if(CHALLENGE.tasks.length === 0){
+    document.getElementById('content').innerHTML =
+      '<div class="eyebrow">Avaluació</div><h2>Repte pràctic</h2>'
+      + (CHALLENGE.intro ? '<p>' + CHALLENGE.intro + '</p>' : '')
+      + '<div class="panel-box tip"><div class="eyebrow">Sense repte avui</div><p>No hi ha cap tasca ni cap repte opcional en aquesta sessió. Podeu anar directament al test.</p></div>'
+      + '<div class="bottom-nav"><button class="btn" onclick="goTo(currentIndex)">‹ Tornar a les diapositives</button>'
+      + '<button class="btn primary" onclick="openQuizGate()">Fer el test ›</button></div>';
+    buildSidebar();
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+  if(checkedTasks.length !== CHALLENGE.tasks.length) checkedTasks = CHALLENGE.tasks.map(function(){ return false; });
+
+  let html = '<div class="eyebrow">Pràctica de la sessió</div><h2>Repte pràctic</h2>'
+    + '<p>' + CHALLENGE.intro + '</p>'
+    + '<div class="progress-row"><div class="progress-bar"><div id="challengeBar"></div></div><div class="progress-pct" id="challengePct">0%</div></div>';
+
+  CHALLENGE.tasks.forEach(function(t,i){
+    html += '<label class="check-item' + (checkedTasks[i]?' done':'') + '" id="task' + i + '">'
+          + '<input type="checkbox" onchange="toggleTask(' + i + ')"' + (checkedTasks[i]?' checked':'') + '>'
+          + '<span>' + t + '</span></label>';
+  });
+
+  if(CHALLENGE.optional.length){
+    html += '<h3 style="margin-top:30px;">Reptes opcionals · no puntuables</h3>'
+          + '<p>Per a qui vulgui anar més enllà del contingut mínim. No compten per a la nota.</p>';
+    CHALLENGE.optional.forEach(function(r,i){
+      html += '<div class="panel-box deepen"><div class="eyebrow">Repte ' + (i+1) + '</div><p>' + r + '</p></div>';
+    });
+  }
+
+  html += '<div class="bottom-nav"><button class="btn" onclick="goTo(currentIndex)">‹ Tornar a les diapositives</button>'
+        + '<button class="btn primary" onclick="openQuizGate()">Fer el test ›</button></div>';
+
+  document.getElementById('content').innerHTML = html;
+  buildSidebar();
+  updateChallengeProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function toggleTask(i){
+  checkedTasks[i] = !checkedTasks[i];
+  document.getElementById('task'+i).classList.toggle('done', checkedTasks[i]);
+  updateChallengeProgress();
+}
+
+function updateChallengeProgress(){
+  if(CHALLENGE.tasks.length === 0) return;
+  const done = checkedTasks.filter(Boolean).length;
+  const pct = Math.round((done / CHALLENGE.tasks.length) * 100);
+  const bar = document.getElementById('challengeBar');
+  if(bar){ bar.style.width = pct + '%'; document.getElementById('challengePct').textContent = pct + '%'; }
+}
+
+/* ---------- ACCÉS AL TEST ---------- */
+function openQuizGate(){
+  // Si aquest navegador ja té un intent fet, anem directament al resultat
+  if(lastAttempt){
+    restoreAttempt(lastAttempt);
+    currentView = 'quiz';
+    buildSidebar();
+    openOverlay('quizModal');
+    renderResult(lastAttempt.result, true);
+    return;
+  }
+
+  openOverlay('quizGate');
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>Comprovant...</h3><div class="sub">Consultant si el professor ha obert el test.</div>';
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderQuizForm();
+      else renderQuizLocked("El professor encara no ha obert el test.");
+    })
+    .catch(function(){
+      renderQuizLocked("No s'ha pogut comprovar l'estat del test. Revisa la connexió.");
+    });
+}
+
+function renderQuizLocked(msg){
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>🔒 Test bloquejat</h3>'
+    + '<div class="sub">' + esc(msg) + '</div>'
+    + '<div class="panel-box"><p style="font-size:13px; color:var(--text-faint);">Quan el professor l’activi des del seu panell, torna a prémer "Comprovar de nou".</p></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Tancar</button>'
+    + '<button class="btn primary" onclick="openQuizGate()">Comprovar de nou</button></div>';
+}
+
+function renderQuizForm(){
+  selectedGroup = suggestGroup();
+  const grpButtons = GROUPS.map(function(g){
+    return '<button type="button" class="grp-btn' + (selectedGroup === g ? ' selected' : '') + '" id="grpBtn' + g + '" onclick="selectGroup(\'' + g + '\')">Grup ' + g + '</button>';
+  }).join('');
+
+  document.getElementById('quizGateBody').innerHTML =
+    '<h3>✅ Test obert</h3>'
+    + '<div class="sub">Identifica’t abans de començar. Tens ' + TEST.questions.length + ' preguntes.</div>'
+    + '<div class="field"><label>Grup</label><div class="grp-row">' + grpButtons + '</div>'
+    + '<div class="grp-hint">' + (selectedGroup ? 'Preseleccionat segons l’horari de classe. Si no és el teu, canvia’l.' : 'Tria el teu grup.') + '</div></div>'
+    + '<div class="field"><label>Número d’alumne</label><input id="gateId" inputmode="numeric" placeholder="p. ex. 24"></div>'
+    + '<div class="field"><label>Nom i cognoms</label><input id="gateName" placeholder="El teu nom"></div>'
+    + '<div class="error-msg" id="gateError"></div>'
+    + '<div class="modal-actions">'
+    + '<button class="btn" onclick="closeOverlay(\'quizGate\')">Cancel·la</button>'
+    + '<button class="btn primary" onclick="startQuizFromGate()">Començar el test</button></div>';
+}
+
+function selectGroup(g){
+  selectedGroup = g;
+  GROUPS.forEach(function(x){
+    document.getElementById('grpBtn' + x).classList.toggle('selected', x === g);
+  });
+}
+
+function showGateError(msg){
+  const el = document.getElementById('gateError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function startQuizFromGate(){
+  const num = document.getElementById('gateId').value.replace(/\s+/g, '');
+  const name = document.getElementById('gateName').value.trim();
+  if(!selectedGroup){ showGateError("Tria el teu grup (A o B)."); return; }
+  if(!/^\d+$/.test(num)){ showGateError("El número d’alumne només pot tenir xifres (p. ex. 24)."); return; }
+  if(!name){ showGateError("Cal escriure el nom i cognoms."); return; }
+  // L'ID que arriba al full porta el grup davant: A24, B8...
+  studentInfo = { id: selectedGroup + String(parseInt(num, 10)), name: name };
+  closeOverlay('quizGate');
+  startQuiz();
+}
+
+/* ---------- FLUX DEL TEST ---------- */
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i = a.length-1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i+1));
+    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function startQuiz(){
+  quizQuestions = shuffleArray(TEST.questions);
+  quizAnswers = new Array(quizQuestions.length).fill(null);
+  currentQuestionIdx = 0;
+  quizSent = false;
+  currentView = 'quiz';
+  buildSidebar();
+  openOverlay('quizModal');
+  renderQuizQuestion();
+}
+
+function renderQuizQuestion(){
+  const q = quizQuestions[currentQuestionIdx];
+  const letters = ['A','B','C','D'];
+  let optsHtml = q.opts.map(function(o, idx){
+    return '<div class="opt' + (quizAnswers[currentQuestionIdx]===idx?' selected':'') + '" onclick="selectAnswer(' + idx + ')">'
+         + '<span class="letter">' + letters[idx] + '</span><span>' + esc(o) + '</span></div>';
+  }).join('');
+  optsHtml += '<div class="opt' + (quizAnswers[currentQuestionIdx]===4?' selected':'') + '" onclick="selectAnswer(4)">'
+            + '<span class="letter">E</span><span>NS/NC (no ho sé / no contesto)</span></div>';
+
+  const answered = quizAnswers.filter(function(a){ return a !== null; }).length;
+
+  document.getElementById('quizBody').innerHTML =
+    '<div class="quiz-progress">Pregunta ' + (currentQuestionIdx+1) + ' de ' + quizQuestions.length
+      + ' &nbsp;·&nbsp; respostes: ' + answered + '/' + quizQuestions.length + '</div>'
+    + '<div class="q-block"><div class="q-text">' + esc(q.q) + '</div>' + optsHtml + '</div>'
+    + '<div class="modal-actions" id="quizActions">'
+    + '<button class="btn small" onclick="askExitQuiz()" style="margin-right:auto;">✕ Sortir</button>'
+    + '<button class="btn" onclick="quizPrev()"' + (currentQuestionIdx===0?' disabled':'') + '>‹ Anterior</button>'
+    + (currentQuestionIdx === quizQuestions.length-1
+        ? '<button class="btn primary" onclick="finishQuiz()">Finalitzar</button>'
+        : '<button class="btn primary" onclick="quizNext()">Següent ›</button>')
+    + '</div>';
+}
+
+function askExitQuiz(){
+  document.getElementById('quizActions').innerHTML =
+    '<span style="margin-right:auto; font-size:12.5px; color:var(--red);">Si surts ara perdràs les respostes.</span>'
+    + '<button class="btn" onclick="renderQuizQuestion()">Continuar el test</button>'
+    + '<button class="btn danger" onclick="exitQuiz()">Sortir igualment</button>';
+}
+
+function exitQuiz(){
+  closeOverlay('quizModal');
+  quizQuestions = []; quizAnswers = []; currentQuestionIdx = 0; studentInfo = null;
+  currentView = 'module';
+  buildSidebar();
+}
+
+function selectAnswer(idx){ quizAnswers[currentQuestionIdx] = idx; renderQuizQuestion(); }
+function quizNext(){ if(currentQuestionIdx < quizQuestions.length-1){ currentQuestionIdx++; renderQuizQuestion(); } }
+function quizPrev(){ if(currentQuestionIdx > 0){ currentQuestionIdx--; renderQuizQuestion(); } }
+
+function finishQuiz(){
+  if(quizSent) return;
+  quizSent = true;
+
+  let correct = 0, wrong = 0, blank = 0;
+  quizQuestions.forEach(function(q, i){
+    const a = quizAnswers[i];
+    if(a === null || a === 4) blank++;
+    else if(a === q.correct) correct++;
+    else wrong++;
+  });
+
+  // Encert +1 · Error -0.333 · NS/NC 0 · normalitzat sobre 10
+  const raw = (correct * 1) - (wrong * (1/3));
+  const grade = Math.round(Math.max(0, raw / quizQuestions.length * 10) * 100) / 100;
+  const result = { correct: correct, wrong: wrong, blank: blank, grade: grade, total: quizQuestions.length };
+
+  // Desem l'intent perquè, si torna a entrar, vagi directe al resultat
+  saveAttempt({
+    student: studentInfo,
+    order: quizQuestions.map(function(q){ return TEST.questions.indexOf(q); }),
+    answers: quizAnswers.slice(),
+    result: result,
+    date: new Date().toISOString()
+  });
+
+  renderResult(result, false);
+  sendResultToSheet({ correct: correct, grade: grade, total: result.total });
+}
+
+function renderResult(res, restored){
+  document.getElementById('quizBody').innerHTML =
+    '<div class="result-card">'
+    + '<div class="eyebrow">' + (restored ? 'Test ja realitzat' : 'Resultat') + '</div>'
+    + '<div class="result-score' + (res.grade < SESSION.passMark ? ' fail' : '') + '">' + res.grade.toFixed(2) + '</div>'
+    + '<p style="color:var(--text-faint); font-size:13px;">sobre 10</p>'
+    + '<p>Encerts: <strong>' + res.correct + '</strong> · Errors: <strong>' + res.wrong + '</strong> · NS/NC: <strong>' + res.blank + '</strong> · Total: ' + res.total + '</p>'
+    + '<div id="sendStatus" style="font-size:13px; color:var(--text-faint); margin-top:10px;">'
+      + (restored ? 'Ja vas enviar aquest resultat. Només pots fer el test una vegada.' : 'Enviant resultat...') + '</div>'
+    + '<button class="btn" onclick="checkRevisioStudent()" style="margin-top:16px;">🔍 Comprovar si la revisió ja està disponible</button>'
+    + '<div id="revisioCheckStatus" style="font-size:13px; color:var(--text-faint); margin-top:8px;"></div>'
+    + '<div id="reviewWrap"></div>'
+    + '<div class="modal-actions"><button class="btn primary" onclick="closeQuizResult()" style="margin:16px auto 0;">Tancar</button></div>'
+    + '</div>';
+}
+
+function closeQuizResult(){
+  closeOverlay('quizModal');
+  currentView = 'module';
+  buildSidebar();
+}
+
+function sendResultToSheet(res){
+  const payload = {
+    studentId: studentInfo.id,
+    studentName: studentInfo.name,
+    topic: TEST.name,
+    score: res.correct,
+    grade: res.grade,
+    totalQuestions: res.total
+  };
+  // Sense fixar Content-Type: en mode no-cors només s'admet text/plain, i
+  // l'Apps Script llegeix igualment el JSON cru a e.postData.contents.
+  fetch(SESSION.sheetUrl, { method:'POST', mode:'no-cors', body: JSON.stringify(payload) })
+    .then(function(){
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = '✓ Resultat enviat correctament.';
+    })
+    .catch(function(err){
+      console.error('Error enviant a Sheets:', err);
+      const s = document.getElementById('sendStatus');
+      if(s) s.textContent = "⚠ No s'ha pogut enviar. Avisa el professor.";
+    });
+}
+
+/* ---------- REVISIÓ DE L'ALUMNE ---------- */
+function checkRevisioStudent(){
+  const status = document.getElementById('revisioCheckStatus');
+  status.textContent = 'Comprovant...';
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.unlocked) renderStudentReview();
+      else status.textContent = "Encara no disponible. El professor l'activarà quan tothom hagi acabat.";
+    })
+    .catch(function(){ status.textContent = "No s'ha pogut comprovar (revisa la connexió)."; });
+}
+
+function renderStudentReview(){
+  const letters = ['A','B','C','D'];
+  const answerText = function(q, idx){ return idx === 4 ? 'NS/NC' : (letters[idx] + '. ' + esc(q.opts[idx])); };
+  let html = '<div style="margin-top:18px; text-align:left;">';
+  quizQuestions.forEach(function(q, i){
+    const given = quizAnswers[i];
+    const isCorrect = given === q.correct;
+    html += '<div class="panel-box" style="border-left:3px solid ' + (isCorrect ? 'var(--green)' : 'var(--red)') + ';">'
+          + '<div style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">' + (isCorrect ? '✓ Correcta' : '✗ Incorrecta') + '</div>'
+          + '<div style="font-weight:500; margin-bottom:6px; font-size:13.5px;">' + esc(q.q) + '</div>'
+          + '<div style="font-size:13px; color:var(--text-dim);">La teva resposta: ' + answerText(q, given === null ? 4 : given) + '</div>'
+          + (!isCorrect ? '<div style="font-size:13px; color:var(--green);">Resposta correcta: ' + answerText(q, q.correct) + '</div>' : '')
+          + '</div>';
+  });
+  html += '</div>';
+  document.getElementById('reviewWrap').innerHTML = html;
+  document.getElementById('revisioCheckStatus').textContent = '';
+}
+
+/* ---------- PANELL DEL PROFESSOR ---------- */
+function openTeacherGate(){
+  // En mode professor el panell s'obre sense tornar a demanar la contrasenya
+  if(teacherMode){ openTeacherPanel(); return; }
+  document.getElementById('teacherError').style.display = 'none';
+  document.getElementById('teacherPwdInput').value = '';
+  openOverlay('teacherGate');
+  setTimeout(function(){ document.getElementById('teacherPwdInput').focus(); }, 60);
+}
+
+function showTeacherError(msg){
+  const el = document.getElementById('teacherError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// La contrasenya la valida l'Apps Script (action=login)
+function tryUnlockTeacher(){
+  const pwd = document.getElementById('teacherPwdInput').value.trim();
+  if(!pwd){ showTeacherError('Escriu la contrasenya.'); return; }
+  const btn = document.getElementById('teacherEnterBtn');
+  btn.disabled = true; btn.textContent = 'Comprovant...';
+  fetch(SESSION.sheetUrl + '?action=login&password=' + encodeURIComponent(pwd))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.status === 'success'){
+        enterTeacherMode(pwd);
+        closeOverlay('teacherGate');
+        openTeacherPanel();
+      } else {
+        showTeacherError((json && json.message) || 'Contrasenya incorrecta.');
+      }
+    })
+    .catch(function(){ showTeacherError("No s'ha pogut connectar amb el servidor."); })
+    .then(function(){ btn.disabled = false; btn.textContent = 'Entrar'; });
+}
+
+function enterTeacherMode(pwd){
+  teacherPwd = pwd;
+  teacherMode = true;
+  try { sessionStorage.setItem(TEACHER_KEY, pwd); } catch(e){}
+  updateTeacherModeUI();
+  loadSolutions();   // el professor veu sempre les solucions
+}
+
+function exitTeacherMode(){
+  teacherPwd = null;
+  teacherMode = false;
+  try { sessionStorage.removeItem(TEACHER_KEY); } catch(e){}
+  stopAutoRefresh();
+  closeOverlay('teacherPanel');
+  solCodes = {}; solUnlocked = false; solChecked = false;
+  updateTeacherModeUI();
+  refreshCurrentView();
+  loadSolutions();   // tornem a consultar com a alumne
+}
+
+function updateTeacherModeUI(){
+  document.body.classList.toggle('teacher-mode', teacherMode);
+  document.getElementById('teacherBadge').classList.toggle('hidden', !teacherMode);
+  document.getElementById('teacherBtn').textContent = teacherMode ? '📊 Panell professor' : '🔒 Panell professor';
+}
+
+function openTeacherPanel(){
+  openOverlay('teacherPanel');
+  document.getElementById('tpSession').textContent = SESSION.name + ' · ' + TEST.name;
+  document.getElementById('tpSolBox').style.display = HAS_SOLUTIONS ? 'flex' : 'none';
+  loadStates();
+  loadTeacherData(false);
+  startAutoRefresh();
+}
+
+function loadStates(){
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(OPEN_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ oberturaUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpOberturaStatus').textContent = "No s'ha pogut consultar l'estat."; });
+
+  fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(REVIEW_KEY))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ revisioUnlocked = !!(j && j.unlocked); updateStateUI(); })
+    .catch(function(){ document.getElementById('tpRevisioStatus').textContent = "No s'ha pogut consultar l'estat."; });
+
+  if(HAS_SOLUTIONS){
+    fetch(SESSION.sheetUrl + '?action=checkRevisio&test=' + encodeURIComponent(SOL_KEY))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ solUnlocked = !!(j && j.unlocked); updateStateUI(); })
+      .catch(function(){ document.getElementById('tpSolStatus').textContent = "No s'ha pogut consultar l'estat."; });
+  }
+}
+
+function updateStateUI(){
+  document.getElementById('tpOberturaStatus').textContent = oberturaUnlocked
+    ? 'Obert: els alumnes ja poden fer el test.'
+    : 'Tancat: els alumnes no poden accedir al test.';
+  const ob = document.getElementById('tpOberturaBtn');
+  ob.textContent = oberturaUnlocked ? 'Tancar el test' : 'Obrir el test';
+  ob.className = 'btn' + (oberturaUnlocked ? ' danger' : ' primary');
+
+  document.getElementById('tpRevisioStatus').textContent = revisioUnlocked
+    ? 'Activada: els alumnes poden veure quines han fallat.'
+    : 'Desactivada: els alumnes encara no veuen les correccions.';
+  const rb = document.getElementById('tpRevisioBtn');
+  rb.textContent = revisioUnlocked ? 'Desactivar' : 'Activar';
+  rb.className = 'btn' + (revisioUnlocked ? ' danger' : '');
+
+  const n = countSolutionBlocks();
+  const nTxt = n === 1 ? '1 bloc' : n + ' blocs';
+  document.getElementById('tpSolStatus').textContent = solUnlocked
+    ? 'Desbloquejades: els alumnes ja veuen el codi (' + nTxt + ').'
+    : 'Bloquejades: els alumnes no veuen el codi (' + nTxt + '). Tu sí, en mode professor.';
+  const sb = document.getElementById('tpSolBtn');
+  sb.textContent = solUnlocked ? 'Bloquejar' : 'Desbloquejar';
+  sb.className = 'btn' + (solUnlocked ? ' danger' : '');
+}
+
+function setFlag(key, value, statusElId, callback){
+  const url = SESSION.sheetUrl + '?action=setRevisio&password=' + encodeURIComponent(teacherPwd || '')
+            + '&test=' + encodeURIComponent(key) + '&value=' + value;
+  document.getElementById(statusElId).textContent = 'actualitzant...';
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(json && json.status === 'success') callback(json.unlocked);
+      else document.getElementById(statusElId).textContent = (json && json.message) || 'Error del servidor.';
+    })
+    .catch(function(){ document.getElementById(statusElId).textContent = "No s'ha pogut actualitzar."; });
+}
+
+function toggleObertura(){
+  setFlag(OPEN_KEY, !oberturaUnlocked, 'tpOberturaStatus', function(v){ oberturaUnlocked = v; updateStateUI(); });
+}
+function toggleRevisio(){
+  setFlag(REVIEW_KEY, !revisioUnlocked, 'tpRevisioStatus', function(v){ revisioUnlocked = v; updateStateUI(); });
+}
+function toggleSolucions(){
+  setFlag(SOL_KEY, !solUnlocked, 'tpSolStatus', function(v){ solUnlocked = v; updateStateUI(); });
+}
+
+/* ---------- RESULTATS ---------- */
+function loadTeacherData(feedback){
+  const st = document.getElementById('tpStatus');
+  st.textContent = 'Consultant el full de càlcul...';
+  fetch(SESSION.sheetUrl + '?password=' + encodeURIComponent(teacherPwd || ''))
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      if(!json || json.status !== 'success' || !Array.isArray(json.data)){
+        st.textContent = (json && json.message) ? json.message : 'Resposta inesperada del servidor.';
+        return;
+      }
+      // Ordre de columnes del full: A Data · B ID · C Nom · D Tema · E Encerts · F Nota · G Total
+      teacherRows = json.data.map(function(row){
+        const v = Object.keys(row).map(function(k){ return row[k]; });
+        return { date:v[0], id:v[1], name:v[2], topic:v[3], score:v[4], grade:parseFloat(v[5]) || 0, total:v[6] };
+      });
+      renderTeacherTable();
+      st.textContent = 'Actualitzat: ' + new Date().toLocaleTimeString('ca-ES');
+    })
+    .catch(function(err){
+      console.error(err);
+      st.textContent = "No s'ha pogut llegir el full (revisa el desplegament de l'Apps Script).";
+    });
+}
+
+function visibleRows(){
+  return teacherRows.filter(function(r){
+    if(filterOnlyThis && String(r.topic).trim() !== TEST.name) return false;
+    if(groupFilter !== 'ALL' && groupOfId(r.id) !== groupFilter) return false;
+    return true;
+  });
+}
+
+function toggleFilter(){
+  filterOnlyThis = !filterOnlyThis;
+  document.getElementById('tpFilterBtn').textContent = filterOnlyThis ? 'Només aquest test' : 'Tots els resultats';
+  renderTeacherTable();
+}
+
+// Tots els grups → Grup A → Grup B → Tots els grups
+function toggleGroupFilter(){
+  const cycle = ['ALL'].concat(GROUPS);
+  groupFilter = cycle[(cycle.indexOf(groupFilter) + 1) % cycle.length];
+  const btn = document.getElementById('tpGroupBtn');
+  btn.textContent = (groupFilter === 'ALL') ? 'Tots els grups' : ('Grup ' + groupFilter);
+  btn.className = 'btn small' + (groupFilter === 'ALL' ? '' : ' primary');
+  renderTeacherTable();
+}
+
+function toggleViewMode(){
+  viewMode = (viewMode === 'submissions') ? 'students' : 'submissions';
+  document.getElementById('tpViewBtn').textContent = (viewMode === 'students') ? 'Veure lliuraments' : 'Mitjanes per alumne';
+  document.getElementById('tpTotalLabel').textContent = (viewMode === 'students') ? 'Alumnes' : 'Lliuraments';
+  renderTeacherTable();
+}
+
+function groupByStudent(rows){
+  const map = {};
+  rows.forEach(function(r){
+    const id = String(r.id).trim().toUpperCase();
+    if(!map[id]) map[id] = { id:id, name:r.name, grades:[] };
+    map[id].name = r.name || map[id].name;
+    map[id].grades.push(r.grade);
+  });
+  return Object.keys(map).map(function(id){
+    const e = map[id];
+    const sum = e.grades.reduce(function(a,b){ return a+b; }, 0);
+    return { id:e.id, name:e.name, count:e.grades.length, avg:sum/e.grades.length,
+             best:Math.max.apply(null, e.grades), worst:Math.min.apply(null, e.grades) };
+  }).sort(function(a,b){ return b.avg - a.avg; });
+}
+
+function renderTeacherTable(){
+  const wrap = document.getElementById('tpTableWrap');
+  const rows = visibleRows();
+
+  if(!rows.length){
+    wrap.innerHTML = '<p style="color:var(--text-faint); padding:16px; margin:0;">No hi ha resultats per a aquest filtre.</p>';
+    document.getElementById('tpTotal').textContent = '0';
+    document.getElementById('tpAvg').textContent = '0.0';
+    document.getElementById('tpPass').textContent = '0%';
+    return;
+  }
+
+  const badge = function(g){ return '<span class="badge ' + (g >= SESSION.passMark ? 'ok' : 'ko') + '">' + g.toFixed(2) + '</span>'; };
+
+  if(viewMode === 'students'){
+    const grouped = groupByStudent(rows);
+    let html = '<table class="tp"><thead><tr><th>ID</th><th>Alumne</th><th>Tests</th><th>Mitjana</th><th>Millor / Pitjor</th></tr></thead><tbody>';
+    grouped.forEach(function(s){
+      html += '<tr><td class="mono">' + esc(s.id) + '</td><td>' + esc(s.name) + '</td><td class="mono">' + s.count + '</td>'
+            + '<td>' + badge(s.avg) + '</td><td class="mono" style="font-size:11px;">' + s.best.toFixed(2) + ' / ' + s.worst.toFixed(2) + '</td></tr>';
+    });
+    wrap.innerHTML = html + '</tbody></table>';
+
+    const avg = grouped.reduce(function(a,s){ return a + s.avg; }, 0) / grouped.length;
+    const pass = grouped.filter(function(s){ return s.avg >= SESSION.passMark; }).length;
+    document.getElementById('tpTotal').textContent = grouped.length;
+    document.getElementById('tpAvg').textContent = avg.toFixed(1);
+    document.getElementById('tpPass').textContent = Math.round(pass/grouped.length*100) + '%';
+    return;
+  }
+
+  let html = '<table class="tp"><thead><tr><th>Hora</th><th>ID</th><th>Alumne</th><th>Encerts</th><th>Nota</th></tr></thead><tbody>';
+  rows.slice().reverse().forEach(function(r){
+    const d = String(r.date);
+    const hora = d.indexOf('T') > -1 ? d.substring(11,19) : (d.indexOf(' ') > -1 ? d.split(' ')[1] : d);
+    html += '<tr><td class="mono" style="font-size:11px;">' + esc(hora) + '</td><td class="mono">' + esc(r.id) + '</td>'
+          + '<td>' + esc(r.name) + '</td><td class="mono">' + esc(r.score) + ' / ' + esc(r.total) + '</td>'
+          + '<td>' + badge(r.grade) + '</td></tr>';
+  });
+  wrap.innerHTML = html + '</tbody></table>';
+
+  const sum = rows.reduce(function(a,r){ return a + r.grade; }, 0);
+  const pass = rows.filter(function(r){ return r.grade >= SESSION.passMark; }).length;
+  document.getElementById('tpTotal').textContent = rows.length;
+  document.getElementById('tpAvg').textContent = (sum/rows.length).toFixed(1);
+  document.getElementById('tpPass').textContent = Math.round(pass/rows.length*100) + '%';
+}
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  if(document.getElementById('tpAuto').checked){
+    autoTimer = setInterval(function(){ loadTeacherData(false); }, SESSION.autoRefreshMs);
+  }
+}
+function stopAutoRefresh(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+function toggleAutoRefresh(){ if(document.getElementById('tpAuto').checked) startAutoRefresh(); else stopAutoRefresh(); }
+
+function exportCSV(){
+  const rows = visibleRows();
+  if(!rows.length) return;
+  let header, lines, suffix;
+
+  if(viewMode === 'students'){
+    header = 'ID;Nom;Tests;Mitjana;Millor;Pitjor';
+    lines = groupByStudent(rows).map(function(s){
+      return [s.id, s.name, s.count, s.avg.toFixed(2), s.best.toFixed(2), s.worst.toFixed(2)].join(';');
+    });
+    suffix = 'Mitjanes';
+  } else {
+    header = 'Data;ID;Nom;Tema;Encerts;Nota;Total';
+    lines = rows.map(function(r){
+      return [r.date, r.id, r.name, r.topic, r.score, r.grade.toFixed(2), r.total].join(';');
+    });
+    suffix = 'Lliuraments';
+  }
+
+  const blob = new Blob(['﻿' + header + '\n' + lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Unity2D_' + (filterOnlyThis ? 'AquestTest' : 'TotElCurs') + '_'
+             + (groupFilter === 'ALL' ? 'TotsGrups' : ('Grup' + groupFilter)) + '_' + suffix + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetLocalAttempt(){
+  clearAttempt();
+  quizQuestions = []; quizAnswers = []; studentInfo = null; quizSent = false;
+  document.getElementById('tpStatus').textContent = "Intent esborrat: en aquest ordinador es pot tornar a fer el test.";
+}
+
+/* ---------- BLOCS DE CODI I SOLUCIONS ----------
+   Les solucions (pre.code-sol[data-sol]) no són a l'HTML: es demanen a l'Apps Script
+   (action=getSolucions), que només les retorna si l'interruptor SOLUCIONS està activat
+   o si s'envia la contrasenya del professor. */
+function countSolutionBlocks(){
+  return MODULES.reduce(function(n, m){ return n + (m.body.match(/data-sol=/g) || []).length; }, 0);
+}
+
+// Ressaltat mínim del codi que arriba del servidor: comentaris // en gris i buits en àmbar
+function highlightCode(code){
+  return esc(code).split('\n').map(function(line){
+    const i = line.indexOf('//');
+    return i > -1 ? line.substring(0, i) + '<span class="cm">' + line.substring(i) + '</span>' : line;
+  }).join('\n');
+}
+
+// Transforma el cos d'una diapositiva segons les marques dels blocs de codi.
+// mode: 'screen' (pantalla) o 'print' (apunts PDF)
+function renderBody(html, mode){
+  if(html.indexOf('code-sol') === -1 && html.indexOf('code-forats') === -1) return html;
+  const box = document.createElement('div');
+  box.innerHTML = html;
+
+  box.querySelectorAll('pre.code-forats').forEach(function(pre){
+    pre.innerHTML = pre.innerHTML.replace(/_{3,}/g, function(g){ return '<span class="gap">' + g + '</span>'; });
+    pre.insertAdjacentHTML('beforebegin', '<div class="code-label forats">✏️ Completa els buits</div>');
+  });
+
+  box.querySelectorAll('pre.code-sol').forEach(function(pre){
+    const id = pre.getAttribute('data-sol');
+    const code = solCodes[id];
+    if(typeof code === 'string'){
+      const label = (teacherMode && !solUnlocked)
+        ? '<div class="code-label sol-teacher">👨‍🏫 Solució · només la veus tu (bloquejada per als alumnes)</div>'
+        : '<div class="code-label sol">✅ Solució</div>';
+      pre.innerHTML = highlightCode(code);
+      pre.insertAdjacentHTML('beforebegin', label);
+      return;
+    }
+    let lock;
+    if(mode === 'print'){
+      lock = '<div class="sol-locked"><div class="sol-msg">🔒 Solució no disponible quan vas descarregar aquests apunts.</div>'
+           + '<div class="sol-sub">Torna a descarregar-los quan el professor desbloquegi les solucions.</div></div>';
+    } else if(teacherMode){
+      lock = '<div class="sol-locked"><div><div class="sol-msg">⚠️ No s’ha trobat aquesta solució al servidor</div>'
+           + '<div class="sol-sub">Revisa que el fitxer Sol_ de l’Apps Script tingui la clau «' + esc(id) + '» i el nom del test «' + esc(TEST.name) + '».</div></div></div>';
+    } else {
+      lock = '<div class="sol-locked"><div><div class="sol-msg">🔒 La solució es desbloqueja al final de la classe</div>'
+           + '<div class="sol-sub">' + (solChecked ? 'Primer intenta-ho tu. El professor l’activarà quan toqui.' : 'Comprovant...') + '</div></div>'
+           + '<button class="btn small" onclick="loadSolutions(true)">Comprovar de nou</button></div>';
+    }
+    pre.outerHTML = lock;
+  });
+  return box.innerHTML;
+}
+
+function loadSolutions(feedback){
+  if(!HAS_SOLUTIONS) return;
+  let url = SESSION.sheetUrl + '?action=getSolucions&test=' + encodeURIComponent(TEST.name);
+  if(teacherMode && teacherPwd) url += '&password=' + encodeURIComponent(teacherPwd);
+  if(feedback) document.querySelectorAll('.sol-locked .sol-sub').forEach(function(el){ el.textContent = 'Comprovant...'; });
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(json){
+      solChecked = true;
+      if(json && json.status === 'success'){
+        solUnlocked = !!json.unlocked;
+        solCodes = (json.codes && typeof json.codes === 'object') ? json.codes : {};
+      } else if(teacherMode){
+        // La contrasenya desada ja no és vàlida (p. ex. s'ha canviat): sortim del mode professor
+        exitTeacherMode();
+        return;
+      }
+      refreshCurrentView();
+    })
+    .catch(function(){
+      solChecked = true;
+      refreshCurrentView();
+      document.querySelectorAll('.sol-locked .sol-sub').forEach(function(el){ el.textContent = "No s'ha pogut comprovar (revisa la connexió)."; });
+    });
+}
+
+// Torna a pintar la diapositiva activa i els apunts amb l'estat actual de les solucions
+function refreshCurrentView(){
+  if(currentView === 'module' || currentView === 'quiz'){
+    const y = window.scrollY;
+    renderModule(currentIndex);
+    window.scrollTo(0, y);
+  }
+  buildPrintArea();
+}
+
+// Codi no copiable (fre, no pany): sense selecció, ni copiar, ni retallar, ni menú contextual.
+// En mode professor es pot copiar.
+['copy','cut','contextmenu','dragstart'].forEach(function(evt){
+  document.addEventListener(evt, function(e){
+    if(teacherMode) return;
+    const t = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+    const sel = window.getSelection ? String(window.getSelection()) : '';
+    const inCode = t && t.closest && t.closest('pre, .sol-locked');
+    const selInCode = sel && Array.prototype.some.call(document.querySelectorAll('#content pre'), function(p){
+      const s = window.getSelection();
+      return s.rangeCount && s.getRangeAt(0).intersectsNode(p);
+    });
+    if(inCode || selInCode) e.preventDefault();
+  });
+});
+
+/* ---------- APUNTS EN PDF (sense el test) ---------- */
+// Es construeix una versió de fons blanc amb totes les diapositives i el repte.
+// També s'aplica si l'alumne fa Ctrl+P directament.
+function buildPrintArea(){
+  let html = '<div class="pr-cover"><h1>' + esc(SESSION.name) + '</h1><div>' + esc(SESSION.subtitle) + ' · Apunts de classe</div></div>';
+  MODULES.forEach(function(m, i){
+    html += '<section class="pr-mod"><h2><span class="num">' + String(i+1).padStart(2,'0') + '</span>' + esc(m.title) + '</h2>' + renderBody(m.body, 'print') + '</section>';
+  });
+  if(CHALLENGE.tasks.length || CHALLENGE.optional.length){   // sessions sense repte: no s'imprimeix la secció
+    html += '<section class="pr-challenge"><h2>Repte pràctic</h2><p>' + CHALLENGE.intro + '</p>';
+    CHALLENGE.tasks.forEach(function(t){
+      html += '<div class="pr-task"><b>☐</b><span>' + t + '</span></div>';
+    });
+    if(CHALLENGE.optional.length){
+      html += '<h3>Reptes opcionals · no puntuables</h3>';
+      CHALLENGE.optional.forEach(function(r, i){
+        html += '<div class="panel-box deepen"><div class="eyebrow">Repte ' + (i+1) + '</div><p>' + r + '</p></div>';
+      });
+    }
+    html += '</section>';
+  }
+  html += '<div class="pr-foot">' + esc(SESSION.subtitle) + '</div>';
+  document.getElementById('printArea').innerHTML = html;
+}
+
+function exportNotesPDF(){
+  buildPrintArea();
+  const originalTitle = document.title;
+  document.title = 'Apunts - ' + SESSION.subtitle.split('·').pop().trim() + ' - ' + SESSION.name;  // nom suggerit del PDF
+  window.print();
+  setTimeout(function(){ document.title = originalTitle; }, 1000);
+}
+
+// Ctrl+P també ha de sortir amb l'estat actual de les solucions
+window.addEventListener('beforeprint', buildPrintArea);
+
+/* ---------- INICIALITZACIÓ ---------- */
+lastAttempt = loadAttempt();
+try { teacherPwd = sessionStorage.getItem(TEACHER_KEY); } catch(e){ teacherPwd = null; }
+teacherMode = !!teacherPwd;   // si la contrasenya ja no és vàlida, loadSolutions en sortirà
+updateTeacherModeUI();
+document.getElementById('sessionTitleEl').innerHTML = esc(SESSION.name) + '<span>· ' + esc(SESSION.subtitle) + '</span>';
+buildGaugeTicks();
+buildSidebar();
+renderModule(0);
+updateGauge();
+buildPrintArea();
+if(teacherMode && !HAS_SOLUTIONS){
+  // Sessió sense solucions: comprovem igualment que la contrasenya desada encara és vàlida
+  fetch(SESSION.sheetUrl + '?action=login&password=' + encodeURIComponent(teacherPwd))
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if(!j || j.status !== 'success') exitTeacherMode(); })
+    .catch(function(){});
+}
+loadSolutions();
+</script>
+</body>
+</html>
