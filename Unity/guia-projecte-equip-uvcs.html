@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projecte en equip · Unity Version Control · 1091</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   CONFIGURACIÓ RÀPIDA → canvia-ho a l'objecte CONFIG (script, a baix)
+   ========================================================= */
+:root{
+  /* paleta dels plafons de sessió (motor v6) */
+  --bg:#0a0a1a; --bg2:#12122b; --card:#1b1b3a; --card2:#242450;
+  --line:#2e2e5c; --txt:#F1F5FF; --muted:#B8C0D9;
+  --violet:#b535ff; --cyan:#00f3ff; --lime:#00ff88; --pink:#f472b6;
+  --amber:#f59e0b; --red:#f43f5e;
+  --grad:linear-gradient(120deg,var(--violet),var(--cyan));
+  --r:16px;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;line-height:1.6;font-size:16.5px}
+h1,h2,h3,h4,.brand,.snum,.rbtn,summary,.loop b{font-family:'Space Grotesk',sans-serif}
+a{color:var(--cyan)}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:.88em}
+:not(pre)>code{background:#272b48;padding:.1em .4em;border-radius:6px;color:#c4b5fd}
+
+/* ---------- Barra superior ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(10,10,26,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1200px;margin:auto;display:flex;align-items:center;gap:18px;padding:10px 20px}
+.brand{font-weight:700;letter-spacing:.5px;white-space:nowrap}
+.brand span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.progress{flex:1;height:10px;background:var(--card2);border-radius:99px;overflow:hidden}
+.progress>div{height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--cyan));transition:width .4s}
+.pct{font-family:'JetBrains Mono';font-size:.85rem;color:var(--lime);min-width:48px;text-align:right}
+
+/* ---------- Hero ---------- */
+.hero{max-width:1200px;margin:auto;padding:56px 20px 30px;position:relative}
+.hero::before{content:"";position:absolute;inset:-80px 0 auto 40%;height:380px;background:radial-gradient(closest-side,rgba(181,53,255,.35),transparent);filter:blur(30px);z-index:-1}
+.tag{display:inline-block;font-size:.78rem;letter-spacing:1.5px;text-transform:uppercase;border:1px solid var(--line);padding:4px 12px;border-radius:99px;color:var(--muted)}
+.draft{background:var(--amber);color:#1a1300;border:none;font-weight:700;margin-left:8px}
+h1{font-size:clamp(2.2rem,5vw,3.6rem);line-height:1.05;margin:16px 0 14px}
+h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:1.15rem;color:var(--muted);max-width:720px}
+
+/* Selector de rol */
+.rolepick{margin-top:28px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.rolepick p{margin:0 6px 0 0;font-weight:500}
+.rbtn{cursor:pointer;border:2px solid var(--line);background:var(--card);color:var(--txt);padding:12px 20px;border-radius:14px;font:inherit;font-weight:500;transition:.2s}
+.rbtn:hover{border-color:var(--violet)}
+.rbtn.on{border-color:transparent;background:var(--grad);color:#0a0a1a;font-weight:700}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1200px;margin:auto;display:grid;grid-template-columns:250px 1fr;gap:40px;padding:10px 20px 80px}
+nav.toc{position:sticky;top:70px;align-self:start;max-height:calc(100vh - 90px);overflow:auto}
+nav.toc a{display:flex;gap:10px;align-items:center;text-decoration:none;color:var(--muted);padding:7px 10px;border-radius:10px;font-size:.93rem}
+nav.toc a:hover{background:var(--card);color:var(--txt)}
+nav.toc a .n{font-family:'JetBrains Mono';font-size:.75rem;width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:var(--card2);flex:none}
+nav.toc a.done .n{background:var(--lime);color:#111}
+nav.toc a.dim{opacity:.4}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}nav.toc{display:none}}
+
+/* ---------- Seccions ---------- */
+section.step{background:var(--bg2);border:1px solid var(--line);border-radius:22px;padding:30px 32px;margin-bottom:28px;scroll-margin-top:80px;transition:opacity .3s}
+section.step.dim{opacity:.45}
+section.step.dim:hover{opacity:.85}
+.shead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.snum{font-family:'JetBrains Mono';font-weight:600;font-size:1rem;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--grad);color:#0a0a1a;flex:none}
+h2{margin:0;font-size:1.6rem}
+.who{font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:99px}
+.who.cap{background:rgba(244,114,182,.15);color:var(--pink);border:1px solid rgba(244,114,182,.4)}
+.who.membre{background:rgba(34,211,238,.12);color:var(--cyan);border:1px solid rgba(34,211,238,.4)}
+.who.tots{background:rgba(163,230,53,.12);color:var(--lime);border:1px solid rgba(163,230,53,.4)}
+.time{margin-left:auto;color:var(--muted);font-size:.85rem;font-family:'JetBrains Mono'}
+.waitnote{display:none;margin:10px 0 0;padding:10px 14px;border-radius:12px;background:var(--card);color:var(--muted);font-size:.92rem}
+section.step.dim .waitnote{display:block}
+h3{font-size:1.15rem;margin:26px 0 8px;color:#c4b5fd}
+
+/* Checklist */
+ol.todo{list-style:none;padding:0;margin:16px 0 0;counter-reset:t}
+ol.todo>li{position:relative;padding:14px 16px 14px 58px;margin:10px 0;background:var(--card);border:1px solid transparent;border-radius:var(--r);transition:.2s}
+ol.todo>li:hover{border-color:var(--line)}
+ol.todo>li input{position:absolute;left:18px;top:16px;appearance:none;width:24px;height:24px;border:2px solid var(--muted);border-radius:8px;cursor:pointer;transition:.15s}
+ol.todo>li input:checked{background:var(--lime);border-color:var(--lime)}
+ol.todo>li input:checked::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#111;font-weight:700;font-size:15px}
+ol.todo>li.ok{opacity:.6}
+ol.todo>li.ok>.t{text-decoration:line-through;text-decoration-color:var(--lime)}
+ol.todo .t{font-weight:500}
+ol.todo .d{color:var(--muted);font-size:.95rem;margin-top:4px}
+
+/* Elements d'interfície simulats */
+.ui{display:inline-block;font-size:.85em;font-weight:600;padding:1px 9px;border-radius:7px;background:#2f3456;border:1px solid #444b78;color:#fff;white-space:nowrap}
+.ui.chk::before{content:"☑ ";color:var(--lime)}
+.ui.nochk::before{content:"☐ ";color:var(--red)}
+.path{font-family:'JetBrains Mono';font-size:.85em;color:var(--amber)}
+
+/* Caixes */
+.box{border-radius:var(--r);padding:16px 18px 16px 56px;margin:18px 0;position:relative;font-size:.97rem}
+.box::before{position:absolute;left:18px;top:14px;font-size:1.3rem}
+.box.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.35)}.box.warn::before{content:"⚠️"}
+.box.tip{background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.3)}.box.tip::before{content:"💡"}
+.box.stop{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.4)}.box.stop::before{content:"⛔"}
+.box.extra{background:rgba(181,53,255,.09);border:1px dashed rgba(181,53,255,.6)}.box.extra::before{content:"🚀"}
+.box b.h{display:block;margin-bottom:2px}
+.box.extra b.h::after{content:" · no puntua";font-weight:400;color:var(--muted);font-size:.85em}
+
+/* Codi */
+.code{position:relative;margin:14px 0}
+.code pre{margin:0;background:#0a0b12;border:1px solid var(--line);border-radius:14px;padding:18px 18px;overflow:auto;font-family:'JetBrains Mono';font-size:.86rem;line-height:1.55}
+.code .lbl{position:absolute;top:-10px;left:14px;font-size:.7rem;background:var(--violet);color:#fff;padding:2px 8px;border-radius:6px;font-family:'JetBrains Mono'}
+.copy{position:absolute;top:10px;right:10px;cursor:pointer;background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font:600 .75rem 'JetBrains Mono'}
+.copy:hover{border-color:var(--cyan)}
+.kw{color:#c084fc}.ty{color:#67e8f9}.st{color:#bef264}.cm{color:#6b7299;font-style:italic}
+
+/* Rols */
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:16px}
+.role{background:var(--card);border-radius:var(--r);padding:18px;border-top:4px solid var(--violet)}
+.role:nth-child(2){border-color:var(--cyan)}.role:nth-child(3){border-color:var(--pink)}.role:nth-child(4){border-color:var(--lime)}
+.role .e{font-size:1.8rem}.role h4{margin:6px 0 4px}.role p{margin:0;color:var(--muted);font-size:.93rem}
+
+/* Arbre de carpetes */
+.tree{background:#0a0b12;border:1px solid var(--line);border-radius:14px;padding:16px 20px;font-family:'JetBrains Mono';font-size:.86rem;line-height:1.75;white-space:pre;overflow:auto}
+.tree .c{color:var(--muted)}.tree .f{color:var(--amber)}.tree .me{color:var(--lime)}
+
+/* Rutina */
+.loop{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px;counter-reset:l}
+.loop div{background:var(--card);border-radius:var(--r);padding:16px;text-align:center;position:relative}
+.loop div b{display:block;font-size:1.6rem}
+.loop div span{font-size:.92rem;color:var(--muted)}
+.loop div::after{content:"→";position:absolute;right:-12px;top:40%;color:var(--violet);font-size:1.2rem}
+.loop div:last-child::after{content:"↺"}
+
+/* Missions */
+.mission{background:var(--card);border-radius:20px;padding:22px 24px;margin:18px 0;border:1px solid var(--line);position:relative;overflow:hidden}
+.mission::after{content:attr(data-n);position:absolute;right:16px;top:-8px;font-size:5rem;font-weight:700;color:rgba(181,53,255,.10)}
+.mission h4{margin:0 0 4px;font-size:1.2rem}
+.mission .goal{color:var(--muted);margin:0 0 6px}
+.mission ol.todo>li{background:var(--card2)}
+.pass{margin-top:12px;padding:10px 14px;border-radius:12px;background:rgba(163,230,53,.08);border:1px solid rgba(163,230,53,.3);font-size:.93rem}
+.pass::before{content:"✅ Superada si: ";font-weight:700;color:var(--lime)}
+
+/* Acordió */
+details{background:var(--card);border-radius:var(--r);margin:10px 0;border:1px solid transparent}
+details[open]{border-color:var(--line)}
+summary{cursor:pointer;padding:14px 18px;font-weight:500;list-style:none;display:flex;gap:10px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+";font-family:'JetBrains Mono';color:var(--violet);font-weight:700;width:16px}
+details[open] summary::before{content:"–"}
+details .in{padding:0 18px 16px 44px;color:var(--muted);font-size:.95rem}
+details .in b{color:var(--txt)}
+
+/* Final */
+.finish{text-align:center;padding:40px 20px;background:var(--grad);border-radius:22px;color:#0a0a1a}
+.finish h2{font-size:2rem}
+.finish p{margin:6px auto;max-width:620px;font-weight:500}
+.reset{margin-top:16px;background:none;border:1px solid rgba(0,0,0,.35);border-radius:10px;padding:6px 14px;cursor:pointer;font:inherit;font-size:.85rem}
+footer{text-align:center;color:var(--muted);font-size:.85rem;padding:20px}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:99}
+.cfg{color:var(--amber);font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+
+<div class="topbar"><div class="topbar-in">
+  <div class="brand">1091 · <span>Projecte en equip</span></div>
+  <div class="progress"><div id="bar"></div></div>
+  <div class="pct" id="pct">0%</div>
+</div></div>
+
+<header class="hero">
+  <span class="tag">CFGS Animació 2D, 3D i Videojocs · Mòdul 1091</span><span class="tag draft" id="draftTag">ESBORRANY</span>
+  <h1>Del <span class="g">"a mi em funciona"</span><br>al "ens funciona a tots"</h1>
+  <p class="lead">Guia pas a pas per muntar el vostre projecte de grup amb <b>Unity Version Control</b>: crear-lo, convidar l'equip i el profe, superar una <b>prova de foc</b> per confirmar que tot va bé <i>abans</i> de començar a crear el joc, i poder continuar treballant <b>des de casa</b>.</p>
+  <div class="rolepick">
+    <p>Qui ets dins l'equip?</p>
+    <button class="rbtn" data-role="cap">👑 Sóc cap de grup</button>
+    <button class="rbtn" data-role="membre">🎮 Sóc membre</button>
+    <button class="rbtn on" data-role="tots">👀 Ho vull veure tot</button>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc" id="toc"></nav>
+<main>
+
+<!-- ====================== 0 ====================== -->
+<section class="step" id="s0" data-role="tots" data-title="Abans de començar">
+  <div class="shead"><div class="snum">00</div><h2>Abans de començar</h2><span class="who tots">Tothom</span><span class="time">⏱ 10'</span></div>
+  <p>Cinc minuts de preparació us estalvien una hora de problemes. Feu-ho <b>tots</b>, cadascú al seu ordinador.</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Inicia sessió a Unity Hub amb el teu compte de Unity</div><div class="d">El mateix compte que faràs servir tot el curs. Apunta't el <b>correu</b>: el cap de grup el necessitarà per convidar-te.</div></li>
+    <li><input type="checkbox"><div class="t">Comprova que tens instal·lada la mateixa versió de Unity que la resta</div><div class="d">Hub › <span class="ui">Installs</span>. Ha de ser <b>exactament</b> la LTS que fem servir a classe. Versions diferents dins un mateix equip = problemes segurs.</div></li>
+    <li><input type="checkbox"><div class="t">Crea una carpeta <code>UnityProjects</code> a l'<b>Escriptori</b></div><div class="d">Hi guardaràs tots els projectes de Unity. <b>Mai</b> dins de OneDrive, Google Drive, Dropbox o una unitat de xarxa: es barallen amb Version Control.</div></li>
+    <li><input type="checkbox"><div class="t">Decidiu els rols de l'equip (mireu el pas 01)</div><div class="d">Especialment: qui és el <b>cap de grup</b>. És qui crearà el projecte.</div></li>
+  </ol>
+  <div class="box warn"><b class="h">Comprova que l'Escriptori no és dins de OneDrive</b>Alguns ordinadors (sobretot els personals) desen l'Escriptori a OneDrive sense que te n'adonis. Botó dret sobre la carpeta <span class="path">UnityProjects</span> › <span class="ui">Propietats</span> › mira la <b>Ubicació</b>. Si hi surt <span class="path">OneDrive</span>, no la facis servir: crea-la directament a la teva carpeta d'usuari, per exemple <span class="path">C:\Users\elTeuNom\UnityProjects</span>.</div>
+</section>
+
+<!-- ====================== 1 ====================== -->
+<section class="step" id="s1" data-role="tots" data-title="Rols de l'equip">
+  <div class="shead"><div class="snum">01</div><h2>Rols de l'equip</h2><span class="who tots">Tothom</span><span class="time">⏱ 5'</span></div>
+  <p>Equips de 3–4 persones. Tothom programa i tothom fa art, però cada rol té una <b>responsabilitat extra</b>. Una persona pot tenir més d'un rol.</p>
+  <div class="roles">
+    <div class="role"><div class="e">👑</div><h4>Cap de grup</h4><p>Crea el projecte, convida l'equip i el profe, i és qui toca l'escena principal.</p></div>
+    <div class="role"><div class="e">⚙️</div><h4>Responsable de configuració</h4><p>L'únic que toca <code>Project Settings</code> i els paquets. Si algú necessita un canvi, li demana.</p></div>
+    <div class="role"><div class="e">🎨</div><h4>Responsable d'art</h4><p>Vetlla perquè sprites, mides i estil siguin coherents. Organitza les carpetes d'art.</p></div>
+    <div class="role"><div class="e">🧪</div><h4>Responsable de proves</h4><p>Després de cada Update important, fa Play i comprova que tot funciona. L'alarma de l'equip.</p></div>
+  </div>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Hem repartit els rols i els tenim apuntats</div><div class="d">Els escriureu al fitxer <code>LlegeixMe.txt</code> durant la prova de foc (missió 5).</div></li>
+  </ol>
+</section>
+
+<!-- ====================== 2 ====================== -->
+<section class="step" id="s2" data-role="cap" data-title="Crear el projecte">
+  <div class="shead"><div class="snum">02</div><h2>Crear el projecte</h2><span class="who cap">Cap de grup</span><span class="time">⏱ 10'</span></div>
+  <p class="waitnote">👀 Això ho fa el cap de grup. Tu, mentrestant, seu al seu costat i comproveu junts cada casella.</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Hub › <span class="ui">New project</span> › plantilla <span class="ui">Universal 2D</span></div><div class="d">Assegura't que a dalt hi ha seleccionada la versió LTS de classe.</div></li>
+    <li><input type="checkbox"><div class="t">Posa-li nom seguint el format <code>1091_GX_NomDelJoc</code></div><div class="d">On <b>X</b> és el número del vostre grup. Ex.: <code>1091_G3_SpaceBurger</code>. Sense espais ni accents.</div></li>
+    <li><input type="checkbox"><div class="t">Location: la teva carpeta local</div><div class="d">La carpeta <span class="path">UnityProjects</span> de l'Escriptori.</div></li>
+    <li><input type="checkbox"><div class="t">Marca les opcions correctes</div><div class="d">
+      <span class="ui chk">Connect to Unity Cloud</span> &nbsp; <span class="ui chk">Use Unity Version Control</span> &nbsp; <span class="ui nochk">Use AI Assistant</span><br>
+      Comprova que a <span class="ui">Unity Organization</span> hi surt la teva organització.</div></li>
+    <li><input type="checkbox"><div class="t">Clica <span class="ui">Create project</span> i espera</div><div class="d">La primera vegada triga una mica: està creant el projecte <b>i</b> el repositori al núvol.</div></li>
+  </ol>
+  <div class="box warn"><b class="h">No marquis "Use AI Assistant"</b>És de pagament (té un període de prova curt). Per ajudar-vos amb el codi farem servir la IA dins de Visual Studio.</div>
+</section>
+
+<!-- ====================== 3 ====================== -->
+<section class="step" id="s3" data-role="cap" data-title="Primer check-in">
+  <div class="shead"><div class="snum">03</div><h2>Primer check-in: pujar-ho TOT</h2><span class="who cap">Cap de grup</span><span class="time">⏱ 10'</span></div>
+  <p class="waitnote">👀 Ho fa el cap de grup. És el pas on més coses poden fallar: vigileu-lo de prop!</p>
+  <p>Ara el projecte existeix al teu ordinador, però el repositori del núvol encara està buit. Cal fer el primer <b>check-in</b> (pujar els canvis).</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Crea l'estructura de carpetes bàsica <b>des de la finestra Project de Unity</b></div><div class="d"><span class="path">Assets/_Project/Scenes</span>, <span class="path">Assets/_Project/Scripts</span>, <span class="path">Assets/_Project/Prefabs</span>, <span class="path">Assets/_Project/Art</span> i <span class="path">Assets/_Alumnes</span>. (Mira el pas 05.)</div></li>
+    <li><input type="checkbox"><div class="t">Guarda l'escena principal com a <code>SC_Main</code> dins de <span class="path">_Project/Scenes</span></div><div class="d"><span class="ui">File › Save As…</span></div></li>
+    <li><input type="checkbox"><div class="t">Obre la finestra de Version Control</div><div class="d">Menú <span class="ui">Window › Unity Version Control</span>, pestanya <span class="ui">Pending Changes</span>.</div></li>
+    <li><input type="checkbox"><div class="t">Selecciona <b>TOTS</b> els fitxers pendents</div><div class="d">La casella de dalt de tot de la llista. No només els que has tocat tu: Unity crea fitxers de configuració que també cal pujar.</div></li>
+    <li><input type="checkbox"><div class="t">Escriu un missatge i clica <span class="ui">Check in</span></div>
+      <div class="code"><span class="lbl">missatge</span><button class="copy">copiar</button><pre>Projecte inicial: plantilla Universal 2D + estructura de carpetes</pre></div></li>
+  </ol>
+  <div class="box stop"><b class="h">Error típic: "Default Renderer is missing"</b>Si als companys els surt aquest error en obrir el projecte, és que al primer check-in faltava algun fitxer (normalment <span class="path">Assets/Settings/Renderer2D.asset</span>). Solució: torna a <span class="ui">Pending Changes</span>, puja el que hi quedi i que ells facin Update.</div>
+</section>
+
+<!-- ====================== 4 ====================== -->
+<section class="step" id="s4" data-role="cap" data-title="Convidar l'equip i el profe">
+  <div class="shead"><div class="snum">04</div><h2>Convidar l'equip… i el profe</h2><span class="who cap">Cap de grup</span><span class="time">⏱ 10'</span></div>
+  <p class="waitnote">👀 Ho fa el cap de grup. Tu: dicta-li el teu correu de Unity ben escrit i estigues atent per si et arriba un correu d'invitació.</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">A la finestra Version Control, clica <span class="ui">Invite members</span></div><div class="d">S'obrirà el navegador amb el Unity Cloud Dashboard.</div></li>
+    <li><input type="checkbox"><div class="t">Afegeix el correu de cada company</div><div class="d">Rol: <span class="ui">User</span> (ni Guest, ni Manager).</div></li>
+    <li><input type="checkbox"><div class="t">Afegeix el profe: <code class="cfg" data-cfg="emailProfe"></code></div><div class="d">Rol: <span class="ui">User</span>. El profe entrarà de tant en tant per veure com evoluciona el projecte.</div></li>
+    <li><input type="checkbox"><div class="t">Comprova la llista de membres</div><div class="d">Hi heu de ser <b>tots</b>: tu, els teus companys i el profe. Una lletra malament al correu = una persona que no pot entrar.</div></li>
+  </ol>
+  <h3>Opcional però molt recomanat: bloquejar les escenes</h3>
+  <p>Dues persones editant la mateixa escena alhora és la manera més ràpida de perdre feina. Unity Version Control permet <b>bloquejar</b> un fitxer mentre algú hi treballa.</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Al Dashboard: el vostre projecte › <span class="ui">Version Control</span></div><div class="d">Si és la primera vegada, pot ser que hagis de clicar <span class="ui">Iniciar</span> / <span class="ui">Get started</span>.</div></li>
+    <li><input type="checkbox"><div class="t">A <span class="ui">Lock rules</span>, afegeix una regla per a les escenes</div><div class="code"><span class="lbl">regla</span><button class="copy">copiar</button><pre>*.unity</pre></div></li>
+  </ol>
+  <div class="box warn"><b class="h">Ull: amb aquesta regla, les escenes queden "en gris"</b>Després de fer check-in, si seleccioneu una escena, l'Inspector pot sortir en gris amb el text <span class="ui">Controlled</span> i un botó <span class="ui">Checkout</span>. No és cap error: vol dir que, per editar-la, primer l'heu d'agafar (<b>Checkout</b>). Així ningú la pot tocar alhora.</div>
+  <div class="box stop"><b class="h">Si en algun moment et demana una targeta de crèdit: PARA</b>No posis cap dada de pagament. Avisa el profe. Mentrestant, feu servir la norma del <b>testimoni</b>: només pot editar l'escena principal qui té l'objecte-testimoni a la taula (un boli, un dau…).</div>
+</section>
+
+<!-- ====================== 5 ====================== -->
+<section class="step" id="s5" data-role="membre" data-title="Descarregar el projecte">
+  <div class="shead"><div class="snum">05</div><h2>Descarregar el projecte</h2><span class="who membre">Membres</span><span class="time">⏱ 10'</span></div>
+  <p class="waitnote">👑 Cap de grup: tu ja el tens. Ajuda els companys i comprova que tothom arriba al final d'aquest pas.</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Si t'ha arribat un correu d'invitació de Unity, accepta'l</div><div class="d">Si no t'arriba, no passa res: continua al pas següent.</div></li>
+    <li><input type="checkbox"><div class="t">Hub › fletxa del botó <span class="ui">Add ▾</span> › <span class="ui">Add from repository</span></div><div class="d">Tria l'organització del cap de grup i el repositori del vostre projecte.</div></li>
+    <li><input type="checkbox"><div class="t">Location: la teva carpeta local i descarrega</div><div class="d">La carpeta <span class="path">UnityProjects</span> de l'Escriptori.</div></li>
+    <li><input type="checkbox"><div class="t">Obre el projecte amb la <b>mateixa versió</b> de Unity</div><div class="d">Si el Hub et proposa canviar de versió o "actualitzar el projecte", <b>no acceptis</b>: avisa el responsable de configuració.</div></li>
+    <li><input type="checkbox"><div class="t">Obre <code>SC_Main</code> i fes Play</div><div class="d">La consola ha d'estar neta (sense vermells).</div></li>
+  </ol>
+  <div class="box tip"><b class="h">No surt el repositori?</b>Els canvis poden trigar uns minuts a propagar-se. Tanca i torna a obrir el Hub. Si el desplegable mostra "Organizations" i "UVCS organizations", mira a totes dues.</div>
+</section>
+
+<!-- ====================== 6 ====================== -->
+<section class="step" id="s6" data-role="tots" data-title="Carpetes i noms">
+  <div class="shead"><div class="snum">06</div><h2>Cada cosa al seu lloc</h2><span class="who tots">Tothom</span><span class="time">⏱ 5'</span></div>
+  <p>Quan quatre persones treballen al mateix projecte, l'ordre no és opcional. Aquesta és l'estructura de l'equip:</p>
+<div class="tree"><span class="f">Assets/</span>
+├─ <span class="f">_Project/</span>            <span class="c">← el joc "oficial" que compartim</span>
+│  ├─ <span class="f">Scenes/</span>          <span class="c">← SC_Main (només la toca el cap de grup)</span>
+│  ├─ <span class="f">Scripts/</span>         <span class="c">← scripts acordats per l'equip</span>
+│  ├─ <span class="f">Prefabs/</span>         <span class="c">← PF_… (així aporteu coses a l'escena)</span>
+│  ├─ <span class="f">Art/</span>
+│  └─ LlegeixMe.txt    <span class="c">← fitxa de l'equip (missió 5)</span>
+└─ <span class="f">_Alumnes/</span>            <span class="c">← el vostre "taller" personal</span>
+   ├─ <span class="me">AnnaPuig/</span>         <span class="c">← escenes de prova, scripts en desenvolupament…</span>
+   ├─ <span class="me">MarcSole/</span>
+   └─ <span class="me">…</span></div>
+  <h3>Tres normes d'or dels noms</h3>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Carpetes i fitxers es creen i es mouen <b>només des de la finestra Project de Unity</b></div><div class="d">Mai des de l'Explorador de Windows: cada fitxer té un <code>.meta</code> amagat que s'ha de moure amb ell, o es trenquen les referències.</div></li>
+    <li><input type="checkbox"><div class="t">Els scripts de prova porten les teves inicials: <code>ScrPlayer_AP</code></div><div class="d">Si dues persones creen una classe <code>ScrPlayer</code>, Unity dona error (<code>CS0101</code>) i <b>ningú</b> de l'equip pot fer Play. El nom del fitxer ha de ser igual que el de la classe.</div></li>
+    <li><input type="checkbox"><div class="t">Prefixos: <code>Scr…</code> scripts · <code>PF_…</code> prefabs · <code>SC_…</code> escenes</div><div class="d">Com fem a classe. Així qualsevol company troba les coses a la primera.</div></li>
+  </ol>
+</section>
+
+<!-- ====================== 7 ====================== -->
+<section class="step" id="s7" data-role="tots" data-title="Prova de foc">
+  <div class="shead"><div class="snum">07</div><h2>🔥 Prova de foc</h2><span class="who tots">Tothom</span><span class="time">⏱ 40'</span></div>
+  <p>Abans de començar el joc, comprovarem que la "canonada" funciona en totes direccions: <b>pujar, baixar, bloquejar i resoldre un conflicte</b>. Són 6 missions. Si les supereu totes, el vostre equip està llest.</p>
+
+  <!-- M1 -->
+  <div class="mission" data-n="1">
+    <h4>Tots a bord</h4>
+    <p class="goal">Tothom té el projecte obert i al dia.</p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">Tothom té el projecte obert i ha fet Play a <code>SC_Main</code> sense errors</div></li>
+      <li><input type="checkbox"><div class="t">A Version Control, pestanya <span class="ui">Incoming Changes</span>: no hi ha res pendent</div><div class="d">Si n'hi ha, clica <span class="ui">Update workspace</span>.</div></li>
+    </ol>
+    <div class="pass">tots els ordinadors de l'equip tenen el projecte obert i la consola neta.</div>
+  </div>
+
+  <!-- M2 -->
+  <div class="mission" data-n="2">
+    <h4>Deixa la teva marca</h4>
+    <p class="goal">Cada membre crea el seu taller i hi posa un script que el saluda.</p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">Crea la teva carpeta <span class="path">Assets/_Alumnes/NomCognom</span></div></li>
+      <li><input type="checkbox"><div class="t">Dins, crea una escena nova <code>SC_Prova_XX</code> (XX = les teves inicials)</div></li>
+      <li><input type="checkbox"><div class="t">Crea un script <code>ScrHola_XX</code> i enganxa-hi aquest codi (canvia les inicials i el nom!)</div>
+<div class="code"><span class="lbl">C# · ScrHola_XX.cs</span><button class="copy">copiar</button><pre><span class="kw">using</span> UnityEngine;
+
+<span class="kw">public class</span> <span class="ty">ScrHola_XX</span> : <span class="ty">MonoBehaviour</span>
+{
+    [<span class="ty">SerializeField</span>] <span class="kw">private string</span> nom = <span class="st">"El teu nom"</span>;
+
+    <span class="kw">private void</span> Start()
+    {
+        <span class="ty">Debug</span>.Log(<span class="st">"Hola! Sóc "</span> + nom + <span class="st">" i Version Control funciona!"</span>);
+    }
+}</pre></div>
+        <div class="d">⚠️ El nom de la classe (<code>ScrHola_XX</code>) ha de ser igual que el nom del fitxer.</div></li>
+      <li><input type="checkbox"><div class="t">A la teva escena: GameObject buit "Salutacio" + el teu script. Play.</div><div class="d">Ha de sortir el missatge a la consola.</div></li>
+      <li><input type="checkbox"><div class="t">Consola neta? Fes check-in</div>
+        <div class="code"><span class="lbl">missatge</span><button class="copy">copiar</button><pre>Prova de foc: carpeta i salutació de NomCognom</pre></div></li>
+    </ol>
+    <div class="pass">tothom ha fet el seu check-in i no surt cap error vermell.</div>
+  </div>
+
+  <!-- M3 -->
+  <div class="mission" data-n="3">
+    <h4>Visita de cortesia</h4>
+    <p class="goal">Comprovem que els canvis viatgen en totes direccions.</p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">Fes <span class="ui">Update workspace</span></div></li>
+      <li><input type="checkbox"><div class="t">A <span class="path">_Alumnes</span> hi veus les carpetes de <b>tots</b> els companys</div></li>
+      <li><input type="checkbox"><div class="t">Obre l'escena d'un company, fes Play i llegeix la seva salutació</div></li>
+    </ol>
+    <div class="pass">cadascú ha pogut executar l'escena d'algun company i veure el seu missatge.</div>
+  </div>
+
+  <!-- M4 -->
+  <div class="mission" data-n="4">
+    <h4>Pany i clau</h4>
+    <p class="goal">Provem el bloqueig de l'escena principal. <i>(Només si heu configurat la regla <code>*.unity</code> al pas 04. Si no, salteu-la i acordeu la norma del testimoni.)</i></p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">👑 Cap de grup: botó dret sobre <code>SC_Main</code> › <span class="ui">Version Control › Checkout</span></div><div class="d">Ara l'escena està bloquejada al teu nom.</div></li>
+      <li><input type="checkbox"><div class="t">🎮 Un membre intenta fer Checkout de <code>SC_Main</code></div><div class="d">Ha d'aparèixer un avís que el fitxer està bloquejat pel cap de grup.</div></li>
+      <li><input type="checkbox"><div class="t">👑 Cap de grup: fes un petit canvi a l'escena (p. ex. canvia el color de fons de la càmera) i fes check-in</div><div class="d">En fer check-in, el bloqueig s'allibera automàticament.</div></li>
+      <li><input type="checkbox"><div class="t">🎮 Tothom fa Update i veu el canvi</div></li>
+    </ol>
+    <div class="pass">el membre no ha pogut agafar l'escena mentre estava bloquejada, i després de l'Update tothom veu el canvi del cap de grup.</div>
+  </div>
+
+  <!-- M5 -->
+  <div class="mission" data-n="5">
+    <h4>Xoc controlat</h4>
+    <p class="goal">Provocarem un conflicte a propòsit per aprendre a resoldre'l amb calma (millor ara que el dia abans de l'entrega!).</p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">👑 Cap de grup: crea <span class="path">_Project/LlegeixMe.txt</span> amb aquest contingut i fes check-in</div>
+        <div class="d">Botó dret a la carpeta <span class="path">_Project</span> › <span class="ui">Show in Explorer</span>, crea-hi el fitxer de text. (Crear un fitxer nou des de l'Explorador sí que és segur; el que no s'ha de fer és <b>moure</b>'ls.)</div>
+<div class="code"><span class="lbl">LlegeixMe.txt</span><button class="copy">copiar</button><pre>EQUIP: 1091_GX
+NOM DEL JOC: (pendent)
+CAP DE GRUP:
+CONFIGURACIÓ:
+ART:
+PROVES:
+MEMBRES:</pre></div></li>
+      <li><input type="checkbox"><div class="t">Tothom fa Update</div></li>
+      <li><input type="checkbox"><div class="t">Dos membres, <b>alhora</b>, canvien la línia <code>NOM DEL JOC:</code> amb propostes diferents</div><div class="d">El primer que faci check-in no tindrà cap problema. El segon… sorpresa! 😈</div></li>
+      <li><input type="checkbox"><div class="t">El segon membre resol el conflicte</div><div class="d">Unity t'avisarà que hi ha canvis nous. Fes Update: es detectarà el conflicte i s'obrirà l'eina de fusió (<i>merge</i>). Hi veuràs les dues versions de la línia: tria'n una (o escriu-ne una de nova que combini les dues), guarda i fes check-in.</div></li>
+      <li><input type="checkbox"><div class="t">Entre tots, acabeu d'omplir el fitxer amb els rols i els noms, i fes check-in</div></li>
+    </ol>
+    <div class="pass">el <code>LlegeixMe.txt</code> final té un sol nom del joc i tots els rols, i ningú té canvis pendents.</div>
+    <div class="box tip"><b class="h">Per què un .txt?</b>Perquè els fitxers de text es poden fusionar línia a línia. Les escenes i els prefabs són molt més difícils de fusionar: per això els bloquegem o treballem cadascú a la seva carpeta.</div>
+  </div>
+
+  <!-- M6 -->
+  <div class="mission" data-n="6">
+    <h4>Foto finish</h4>
+    <p class="goal">Deixem constància que l'equip està llest.</p>
+    <ol class="todo">
+      <li><input type="checkbox"><div class="t">👑 Cap de grup: a Version Control, pestanya <span class="ui">Changesets</span></div><div class="d">Hi ha d'haver almenys un changeset (check-in) de <b>cada</b> membre.</div></li>
+      <li><input type="checkbox"><div class="t">Feu una captura de pantalla de la llista de changesets</div></li>
+      <li><input type="checkbox"><div class="t">Pugeu-la a Moodle, a la tasca del projecte, juntament amb el contingut del <code>LlegeixMe.txt</code></div></li>
+    </ol>
+    <div class="pass">a la captura es veu un check-in de cada membre de l'equip.</div>
+  </div>
+</section>
+
+<!-- ====================== 8 ====================== -->
+<section class="step" id="s8" data-role="tots" data-title="La rutina diària">
+  <div class="shead"><div class="snum">08</div><h2>La rutina de cada dia</h2><span class="who tots">Tothom</span></div>
+  <p>A partir d'ara, cada sessió de treball segueix aquest cicle. Sempre. Sense excepcions.</p>
+  <div class="loop">
+    <div><b>⬇️</b>Update<br><span>abans de tocar res</span></div>
+    <div><b>🛠️</b>Treballa<br><span>al teu taller o amb el fitxer bloquejat</span></div>
+    <div><b>🟢</b>Consola neta<br><span>Play i zero vermells</span></div>
+    <div><b>⬆️</b>Check-in<br><span>amb un missatge clar</span></div>
+  </div>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Mai facis check-in amb la consola en vermell</div><div class="d">Un error de compilació teu bloqueja el Play de <b>tot</b> l'equip. Si has de marxar amb la feina a mitges, fes <span class="ui">Shelve</span> (la desa al núvol sense compartir-la).</div></li>
+    <li><input type="checkbox"><div class="t">Missatges de check-in que expliquin <i>què</i> has fet</div><div class="d">✅ <code>Afegit salt doble al player</code> &nbsp; ❌ <code>canvis</code> &nbsp; ❌ <code>asdf</code></div></li>
+    <li><input type="checkbox"><div class="t">Fes check-in sovint, en trossos petits</div><div class="d">Millor cinc check-ins petits que un de gegant a final de dia: si alguna cosa es trenca, sabreu exactament on.</div></li>
+    <li><input type="checkbox"><div class="t">Si alguna cosa va malament: Update, no esborrar i tornar a descarregar</div></li>
+  </ol>
+</section>
+
+<!-- ====================== 9 ====================== -->
+<section class="step" id="s9b" data-role="tots" data-title="Continuar des de casa">
+  <div class="shead"><div class="snum">09</div><h2>🏠 Continuar des de casa</h2><span class="who tots">Tothom</span><span class="time">⏱ 20' la 1a vegada</span></div>
+  <p>El projecte viu al núvol, no a l'ordinador de classe. Això vol dir que pots continuar des de qualsevol ordinador: només cal que el connectis al repositori. Cada ordinador té la seva <b>còpia de treball</b> (el <i>workspace</i>), i Version Control les manté sincronitzades… sempre que segueixis el ritual.</p>
+
+  <h3>A) Abans de sortir de classe: el ritual de sortida</h3>
+  <p>Aquí és on es perd més feina. Cinc segons de ritual us estalvien un "ho tinc a l'altre ordinador".</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Consola neta? Fes <b>check-in</b> de tot el que funciona</div><div class="d">El que no pugis es queda a l'ordinador de classe, i des de casa no ho veuràs.</div></li>
+    <li><input type="checkbox"><div class="t">Tens feina a mitges que encara no compila? Fes <span class="ui">Shelve</span>, no check-in</div><div class="d">Pestanya <span class="ui">Pending Changes</span> › selecciona els fitxers › <span class="ui">Shelve</span>. Es desa al núvol <b>sense</b> arribar als companys. A casa la recuperaràs amb <span class="ui">Unshelve</span>.</div></li>
+    <li><input type="checkbox"><div class="t">No marxis amb cap escena bloquejada</div><div class="d">Si tens un Checkout fet (p. ex. de <code>SC_Main</code>), fes-ne check-in o desfés-lo (<span class="ui">Undo</span>). Si no, la teva escena queda bloquejada per a tot l'equip fins demà.</div></li>
+    <li><input type="checkbox"><div class="t">Comprova que <span class="ui">Pending Changes</span> està buit (o només hi ha el que has fet Shelve)</div></li>
+    <li><input type="checkbox"><div class="t">Si l'ordinador de classe és compartit: tanca la sessió del Hub</div><div class="d">Hub › icona del teu compte › <span class="ui">Sign out</span>. Que ningú pugi canvis amb el teu nom.</div></li>
+  </ol>
+
+  <h3>B) La primera vegada a casa</h3>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Instal·la Unity Hub i la <b>mateixa versió LTS</b> que a classe</div><div class="d">Hub › <span class="ui">Installs</span> › <span class="ui">Install Editor</span>. No cal cap mòdul extra (ni Android, ni iOS…). Mira el número exacte de versió a l'ordinador de classe o pregunta al responsable de configuració.</div></li>
+    <li><input type="checkbox"><div class="t">Inicia sessió amb el <b>mateix compte</b> de Unity que a classe</div><div class="d">Amb un altre compte no veuràs el repositori: la invitació és per al teu correu.</div></li>
+    <li><input type="checkbox"><div class="t">Hub › <span class="ui">Add ▾</span> › <span class="ui">Add from repository</span> › el repositori de l'equip</div><div class="d">Exactament com al pas 05. També a casa, una carpeta <span class="path">UnityProjects</span> a l'Escriptori. Fes la mateixa comprovació de OneDrive que al pas 00: a casa és on més sovint passa.</div></li>
+    <li><input type="checkbox"><div class="t">Obre el projecte, obre <code>SC_Main</code> i fes Play</div><div class="d">La primera obertura triga: Unity ha de generar la carpeta <code>Library</code>, que no viatja pel repositori. Paciència.</div></li>
+    <li><input type="checkbox"><div class="t">Si vas fer Shelve a classe, recupera'l</div><div class="d">Pestanya <span class="ui">Shelves</span> › botó dret sobre el teu shelve › aplica'l al workspace (<i>Unshelve</i>).</div></li>
+  </ol>
+
+  <h3>C) Cada vegada que treballis a casa</h3>
+  <p>La mateixa rutina de sempre (pas 08), amb un parell d'apunts:</p>
+  <ol class="todo">
+    <li><input type="checkbox"><div class="t">Primer de tot, <span class="ui">Update workspace</span></div><div class="d">Els companys han treballat des de l'última vegada que vas obrir el projecte en aquest ordinador.</div></li>
+    <li><input type="checkbox"><div class="t">Abans de tancar, check-in (o Shelve). Demà a classe, el primer que faràs és Update</div><div class="d">Pensa-ho així: <b>sempre puges en marxar i sempre baixes en arribar</b>, sigui on sigui.</div></li>
+    <li><input type="checkbox"><div class="t">Sense internet? Pots treballar igualment</div><div class="d">Pots editar i provar sense connexió. El que no podràs fer és Update, check-in ni Checkout d'escenes bloquejades. Ho fas quan tornis a tenir connexió.</div></li>
+  </ol>
+  <div class="box tip"><b class="h">L'ordinador de casa no pot amb Unity?</b>Un projecte 2D petit funciona en ordinadors bastant modestos, però si de cap manera no pot, parla-ho amb el profe: podeu organitzar la feina perquè tu facis la part que requereix menys màquina.</div>
+  <div class="box warn"><b class="h">Compte a fer canvis al mateix fitxer en dos ordinadors</b>Si deixes un script modificat sense pujar a classe i el tornes a modificar a casa, tindràs un conflicte… amb tu mateix. El ritual de sortida existeix precisament per evitar-ho.</div>
+</section>
+
+<!-- ====================== 10 ====================== -->
+<section class="step" id="s9" data-role="tots" data-title="Si alguna cosa falla">
+  <div class="shead"><div class="snum">10</div><h2>Si alguna cosa falla…</h2><span class="who tots">Tothom</span></div>
+  <p>Respira. Gairebé tot té solució. Aquests són els problemes més habituals:</p>
+  <details><summary>"Default Renderer is missing" en obrir el projecte</summary><div class="in">Al primer check-in faltaven fitxers de configuració. El <b>cap de grup</b> ha de mirar <span class="ui">Pending Changes</span>, pujar el que hi quedi (sobretot dins <span class="path">Assets/Settings</span>) i la resta fer Update.</div></details>
+  <details><summary>No em surt el repositori a "Add from repository"</summary><div class="in">Espera uns minuts i reinicia el Hub. Comprova que has iniciat sessió amb el <b>mateix correu</b> que t'han convidat. Revisa el desplegable d'organitzacions (pot haver-hi "Organizations" i "UVCS organizations").</div></details>
+  <details><summary>Després de fer Update, la consola està plena de vermells</summary><div class="in">Algú ha pujat codi trencat. Mireu a <span class="ui">Changesets</span> quin ha estat l'últim check-in i qui l'ha fet: aquella persona l'ha d'arreglar i tornar a pujar. Mentrestant, no pugeu res més.</div></details>
+  <details><summary>Error CS0101: "already contains a definition for…"</summary><div class="in">Dues classes amb el mateix nom. Canvia el nom de la teva (amb les inicials, <code>ScrPlayer_XX</code>) i recorda que el nom del fitxer ha de coincidir.</div></details>
+  <details><summary>"The file is locked" / no puc guardar l'escena</summary><div class="in">Algú la té bloquejada. Mira a Version Control qui. Si aquella persona ha marxat sense fer check-in, el cap de grup pot alliberar el bloqueig al Dashboard: repositori › <span class="ui">File locks</span> › <span class="ui">Release</span>.</div></details>
+  <details><summary>L'Inspector surt en gris amb "Controlled" i un botó "Checkout"</summary><div class="in">Normal si heu configurat la regla de bloqueig <code>*.unity</code>: abans d'editar una escena cal agafar-la. Clica <span class="ui">Checkout</span> (o botó dret › <span class="ui">Version Control › Checkout</span>). En fer check-in, s'allibera per als companys.</div></details>
+  <details><summary>Vaig deixar una escena bloquejada a l'ordinador de classe</summary><div class="in">Els companys no la poden editar. El <b>cap de grup</b> pot alliberar el bloqueig al Dashboard: repositori › <span class="ui">File locks</span> › <span class="ui">Release</span>. Els canvis que tinguessis sense pujar a classe es perdran o quedaran a aquell ordinador: la propera vegada, ritual de sortida!</div></details>
+  <details><summary>A casa no veig els canvis que vaig fer a classe</summary><div class="in">No els vas pujar (check-in) o no has fet <span class="ui">Update workspace</span>. Si eren a l'ordinador de classe sense pujar, només els recuperaràs tornant a aquell ordinador. Si vas fer Shelve, mira a <span class="ui">Shelves</span>.</div></details>
+  <details><summary>Prefabs o sprites "Missing" després d'un Update</summary><div class="in">Algú ha mogut o canviat el nom de fitxers des de l'Explorador de Windows i s'han perdut els <code>.meta</code>. Desfeu el canvi i torneu-ho a fer des de la finestra Project de Unity.</div></details>
+  <details><summary>El Hub em diu que el projecte és d'una altra versió de Unity</summary><div class="in">No l'obris amb una altra versió ni acceptis "actualitzar". Instal·la la versió correcta des de <span class="ui">Installs</span> o avisa el responsable de configuració.</div></details>
+  <details><summary>Tinc un conflicte i no sé què fer</summary><div class="in">No toquis res a l'atzar. Crida el company que va fer l'altre canvi i decidiu junts quina versió us quedeu. Si és una escena o un prefab, normalment la solució és quedar-se una de les dues versions sencera.</div></details>
+</section>
+
+<!-- ====================== 11 ====================== -->
+<section class="step" id="s10" data-role="tots" data-title="Nivell extra">
+  <div class="shead"><div class="snum">11</div><h2>Nivell extra</h2><span class="who tots">Per als curiosos</span></div>
+  <p>Res d'això és obligatori. Si us sobra temps o voleu treballar com un estudi professional, endavant.</p>
+  <div class="box extra"><b class="h">Branques (branches)</b>Una branca és una còpia paral·lela del projecte on pots experimentar sense molestar ningú. Quan funciona, la fusiones (<i>merge</i>) amb la principal. Ho trobaràs a la pestanya <span class="ui">Branches</span>.</div>
+  <div class="box extra"><b class="h">Shelve per canviar d'ordinador</b>Fes Shelve a classe i recupera la feina a casa (<i>Unshelve</i>) sense haver de pujar codi a mitges per a tot l'equip.</div>
+  <div class="box extra"><b class="h">La IA us escriu el missatge de check-in</b>Demana a Copilot, a Visual Studio, que et resumeixi en una frase què fa el codi que has canviat. Llegeix-ho i corregeix-ho: el responsable del missatge ets tu.</div>
+  <div class="box extra"><b class="h">Namespaces</b>Una altra manera d'evitar noms de classe repetits: <code>namespace G3.Anna { … }</code>. Pregunta al profe si vols provar-ho.</div>
+</section>
+
+<div class="finish" id="finish">
+  <h2>🏁 Equip llest per crear!</h2>
+  <p>Si teniu totes les caselles marcades, la vostra "canonada" funciona. A partir d'ara, el que importa és el joc.</p>
+  <p style="font-size:.9rem;opacity:.8">Les caselles es guarden en aquest navegador, només per a tu.</p>
+  <button class="reset" id="reset">Esborrar el meu progrés</button>
+</div>
+
+</main>
+</div>
+<footer>Institut EMAV · CFGS Animació 2D, 3D i Videojocs · Mòdul 1091 · Programació de videojocs 2D amb Unity</footer>
+
+<script>
+/* =========================================================
+   CONFIG: canvia aquí les dades i tornar a publicar
+   ========================================================= */
+const CONFIG = {
+  emailProfe: "CORREU-DEL-PROFE@exemple.cat",
+  esborrany: true
+};
+
+document.querySelectorAll('[data-cfg]').forEach(el => el.textContent = CONFIG[el.dataset.cfg] || '');
+if (!CONFIG.esborrany) document.getElementById('draftTag').remove();
+
+/* ---------- Emmagatzematge segur ---------- */
+const KEY = 'guia-uvcs-1091-v2';
+const store = {
+  get(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } },
+  set(v){ try { localStorage.setItem(KEY, JSON.stringify(v)); } catch(e){} }
+};
+let state = store.get();
+
+/* ---------- Checklist ---------- */
+const boxes = [...document.querySelectorAll('ol.todo input[type=checkbox]')];
+boxes.forEach((b,i) => {
+  b.dataset.id = i;
+  b.checked = !!(state.c && state.c[i]);
+  b.closest('li').classList.toggle('ok', b.checked);
+  b.addEventListener('change', () => {
+    state.c = state.c || {};
+    state.c[i] = b.checked;
+    store.set(state);
+    b.closest('li').classList.toggle('ok', b.checked);
+    update(true);
+  });
+});
+
+/* ---------- Índex lateral ---------- */
+const steps = [...document.querySelectorAll('section.step')];
+const toc = document.getElementById('toc');
+steps.forEach((s,i) => {
+  const a = document.createElement('a');
+  a.href = '#' + s.id;
+  a.innerHTML = `<span class="n">${String(i).padStart(2,'0')}</span>${s.dataset.title}`;
+  toc.appendChild(a);
+});
+const tocLinks = [...toc.querySelectorAll('a')];
+
+let celebrated = false;
+function update(fromClick){
+  const done = boxes.filter(b => b.checked).length;
+  const p = Math.round(done / boxes.length * 100);
+  document.getElementById('bar').style.width = p + '%';
+  document.getElementById('pct').textContent = p + '%';
+  steps.forEach((s,i) => {
+    const bx = [...s.querySelectorAll('input[type=checkbox]')];
+    tocLinks[i].classList.toggle('done', bx.length && bx.every(b => b.checked));
+  });
+  if (p === 100 && fromClick && !celebrated){ celebrated = true; confetti(); }
+  if (p < 100) celebrated = false;
+}
+
+/* ---------- Rol ---------- */
+const rbtns = [...document.querySelectorAll('.rbtn')];
+function setRole(r){
+  rbtns.forEach(b => b.classList.toggle('on', b.dataset.role === r));
+  steps.forEach((s,i) => {
+    const dim = r !== 'tots' && s.dataset.role !== 'tots' && s.dataset.role !== r;
+    s.classList.toggle('dim', dim);
+    tocLinks[i].classList.toggle('dim', dim);
+  });
+  state.role = r; store.set(state);
+}
+rbtns.forEach(b => b.addEventListener('click', () => setRole(b.dataset.role)));
+setRole(state.role || 'tots');
+
+/* ---------- Copiar ---------- */
+document.querySelectorAll('.copy').forEach(btn => btn.addEventListener('click', () => {
+  const txt = btn.parentElement.querySelector('pre').innerText;
+  const ok = () => { btn.textContent = 'copiat ✓'; setTimeout(() => btn.textContent = 'copiar', 1500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(ok).catch(() => fallback(txt, ok));
+  else fallback(txt, ok);
+}));
+function fallback(txt, ok){
+  const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t);
+  t.select(); try { document.execCommand('copy'); ok(); } catch(e){} t.remove();
+}
+
+/* ---------- Reset ---------- */
+document.getElementById('reset').addEventListener('click', () => {
+  state = { role: state.role }; store.set(state);
+  boxes.forEach(b => { b.checked = false; b.closest('li').classList.remove('ok'); });
+  update();
+});
+
+/* ---------- Confeti ---------- */
+function confetti(){
+  const c = document.getElementById('confetti'), x = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const cols = ['#8b5cf6','#22d3ee','#a3e635','#f472b6','#fbbf24'];
+  const ps = Array.from({length:180}, () => ({
+    x: Math.random()*c.width, y: -20 - Math.random()*c.height*.5,
+    vx: (Math.random()-.5)*4, vy: 2 + Math.random()*4,
+    s: 5 + Math.random()*6, r: Math.random()*6, col: cols[Math.floor(Math.random()*cols.length)]
+  }));
+  let f = 0;
+  (function loop(){
+    x.clearRect(0,0,c.width,c.height);
+    ps.forEach(p => { p.x += p.vx; p.y += p.vy; p.r += .1;
+      x.save(); x.translate(p.x,p.y); x.rotate(p.r); x.fillStyle = p.col;
+      x.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6); x.restore(); });
+    if (++f < 240) requestAnimationFrame(loop); else x.clearRect(0,0,c.width,c.height);
+  })();
+}
+
+update();
+</script>
+</body>
+</html>
